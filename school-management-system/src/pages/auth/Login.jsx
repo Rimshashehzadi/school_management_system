@@ -66,8 +66,9 @@ export default function Login() {
         </form>
 
         <p className="text-center text-sm text-slate-500 mt-6">
-          Demo: admin@school.com / password
-        </p>
+  Admin: admin@school.com / password <br />
+  Teacher: teacher@school.com / password
+</p>
       </div>
     </div>
   );

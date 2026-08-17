@@ -42,3 +42,11 @@ npm install
 
 # Run development server
 npm run dev
+# src/
+# ├── components/     # UI + Layout components
+# ├── contexts/       # Auth Context
+# ├── layouts/        # Dashboard Layout
+# ├── pages/          # All main pages
+# ├── utils/          # Helper functions
+# ├── App.jsx
+# └── main.jsx

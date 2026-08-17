@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 
 import DashboardLayout from './layouts/DashboardLayout';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from  '../src/components/common/ProtectedRoute';
 import Dashboard from './pages/dashboard/Dashboard';
 import Login from './pages/auth/Login';
 import Students from './pages/students/Students';

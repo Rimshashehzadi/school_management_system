@@ -7,3 +7,17 @@
   --color-warning: #D97706;
   --color-danger: #E11D48;
 }
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #receipt, #receipt * {
+    visibility: visible;
+  }
+  #receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

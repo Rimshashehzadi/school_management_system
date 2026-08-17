@@ -11,6 +11,9 @@ import Fees from './pages/fees/Fees';
 import Exams from './pages/exams/Exams';
 import Staff from './pages/staff/Staff';
 import Reports from './pages/reports/Reports';
+import Settings from './pages/settings/Settings';
+import Accounting from './pages/accounting/Accounting';
+import Backup from './pages/backup/Backup'
 
 function App() {
   return (
@@ -31,6 +34,9 @@ function App() {
           <Route path="/exams" element={<Exams/>} />
           <Route path="/staff" element={<Staff/>} />
           <Route path="/reports" element={<Reports/>} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/accounting" element={<Accounting />} />
+          <Route path="/backup" element={<Backup />} />
         </Route>
       </Routes>
     </BrowserRouter>

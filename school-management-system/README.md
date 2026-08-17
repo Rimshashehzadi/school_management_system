@@ -1,16 +1,44 @@
-# React + Vite
+# EduManage - School Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A simple, clean and affordable School Management System built with **React + Tailwind CSS**.
 
-Currently, two official plugins are available:
+> Designed for schools that want an easy-to-use system instead of complex and expensive software.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- Student Management (Add, Edit, Delete)
+- Attendance Tracking
+- Fee Collection + Receipt Printing
+- Exams & Results
+- Staff Management
+- Basic Accounting
+- Reports (CSV Download)
+- Backup & Restore
+- Role-based Access (Admin / Teacher)
+- Offline Support
+- Fully Responsive
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+- React 19
+- Vite
+- Tailwind CSS
+- React Router
+- Lucide Icons
+- localStorage (for data persistence)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Demo Accounts
+
+| Role    | Email               | Password  |
+|---------|---------------------|-----------|
+| Admin   | admin@school.com    | password  |
+| Teacher | teacher@school.com  | password  |
+
+## Getting Started
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev

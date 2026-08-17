@@ -1,10 +1,54 @@
-import { Users, ClipboardCheck, CreditCard, TrendingUp } from 'lucide-react';
-import StatCard from  '../../components/ui/StatCard';
+import { useEffect, useState } from 'react';
+import { Users, ClipboardCheck, CreditCard, TrendingUp, Wallet } from 'lucide-react';
+import StatCard from '../../components/ui/StatCard';
+import { getData } from '../../utils/storage';
 
 export default function Dashboard() {
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeStudents: 0,
+    totalFeesCollected: 0,
+    pendingFees: 0,
+    totalIncome: 0,
+    totalExpense: 0,
+  });
+
+  useEffect(() => {
+    const students = getData('students', []);
+    const fees = getData('fees', []);
+    const accounting = getData('accounting', []);
+
+    const totalStudents = students.length;
+    const activeStudents = students.filter(s => s.status === 'Active').length;
+
+    const totalFeesCollected = fees
+      .filter(f => f.status === 'Paid')
+      .reduce((sum, f) => sum + Number(f.amount || 0), 0);
+
+    const pendingFees = fees
+      .filter(f => f.status === 'Pending' || f.status === 'Overdue')
+      .reduce((sum, f) => sum + Number(f.amount || 0), 0);
+
+    const totalIncome = accounting
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+    const totalExpense = accounting
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+    setStats({
+      totalStudents,
+      activeStudents,
+      totalFeesCollected,
+      pendingFees,
+      totalIncome,
+      totalExpense,
+    });
+  }, []);
+
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
         <p className="text-slate-500 mt-1">Welcome back! Here's what's happening today.</p>
@@ -14,73 +58,73 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Students"
-          value="1,248"
+          value={stats.totalStudents}
           icon={Users}
           color="bg-indigo-600"
         />
         <StatCard
-          title="Today's Attendance"
-          value="94%"
+          title="Active Students"
+          value={stats.activeStudents}
           icon={ClipboardCheck}
           color="bg-emerald-600"
         />
         <StatCard
           title="Fees Collected"
-          value="₹4.2L"
+          value={`₹${(stats.totalFeesCollected / 1000).toFixed(1)}K`}
           icon={CreditCard}
           color="bg-amber-500"
         />
         <StatCard
           title="Pending Fees"
-          value="₹86K"
+          value={`₹${(stats.pendingFees / 1000).toFixed(1)}K`}
           icon={TrendingUp}
           color="bg-rose-500"
         />
       </div>
 
-      {/* Quick Actions + Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quick Actions */}
+      {/* Extra Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-          <h2 className="font-semibold text-slate-900 mb-4">Quick Actions</h2>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-emerald-50 rounded-lg">
+              <Wallet className="w-5 h-5 text-emerald-600" />
+            </div>
+            <h2 className="font-semibold text-slate-900">Accounting Summary</h2>
+          </div>
           <div className="space-y-3">
-            <button className="w-full text-left px-4 py-3 rounded-xl bg-indigo-50 text-indigo-700 font-medium hover:bg-indigo-100 transition">
-              + Add New Student
-            </button>
-            <button className="w-full text-left px-4 py-3 rounded-xl bg-slate-50 text-slate-700 font-medium hover:bg-slate-100 transition">
-              Mark Attendance
-            </button>
-            <button className="w-full text-left px-4 py-3 rounded-xl bg-slate-50 text-slate-700 font-medium hover:bg-slate-100 transition">
-              Collect Fees
-            </button>
-            <button className="w-full text-left px-4 py-3 rounded-xl bg-slate-50 text-slate-700 font-medium hover:bg-slate-100 transition">
-              Generate Report
-            </button>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Total Income</span>
+              <span className="font-semibold text-emerald-600">₹{stats.totalIncome.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Total Expense</span>
+              <span className="font-semibold text-rose-600">₹{stats.totalExpense.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between pt-3 border-t border-slate-100">
+              <span className="font-medium text-slate-900">Balance</span>
+              <span className={`font-bold ${stats.totalIncome - stats.totalExpense >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+                ₹{(stats.totalIncome - stats.totalExpense).toLocaleString()}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-          <h2 className="font-semibold text-slate-900 mb-4">Recent Activity</h2>
-          <div className="space-y-4">
-            {[
-              { text: 'Fee received from Rahul Sharma (Class 10-A)', time: '10 min ago', type: 'success' },
-              { text: 'New student admitted: Ananya Patel', time: '25 min ago', type: 'info' },
-              { text: 'Attendance marked for Class 8-B', time: '1 hour ago', type: 'info' },
-              { text: 'Exam results published - Mid Term', time: '2 hours ago', type: 'warning' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-start gap-3 pb-4 border-b border-slate-50 last:border-0">
-                <div className={`w-2 h-2 mt-2 rounded-full ${
-                  item.type === 'success' ? 'bg-emerald-500' :
-                  item.type === 'warning' ? 'bg-amber-500' : 'bg-indigo-500'
-                }`} />
-                <div className="flex-1">
-                  <p className="text-sm text-slate-700">{item.text}</p>
-                  <p className="text-xs text-slate-400 mt-1">{item.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+          <h2 className="font-semibold text-slate-900 mb-4">Quick Tips</h2>
+          <ul className="space-y-3 text-sm text-slate-600">
+            <li className="flex gap-2">
+              <span className="text-indigo-600">•</span>
+              Collect pending fees regularly to improve cash flow.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-indigo-600">•</span>
+              Mark attendance daily for accurate reports.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-indigo-600">•</span>
+              Keep accounting updated for better financial overview.
+            </li>
+          </ul>
         </div>
       </div>
     </div>

@@ -15,13 +15,21 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = (email, password) => {
-    // Simple demo login (replace with real API later)
+    // Demo accounts
     if (email === 'admin@school.com' && password === 'password') {
-      const userData = { email, name: 'Admin', role: 'Principal' };
+      const userData = { email, name: 'Admin', role: 'Admin' };
       localStorage.setItem('edumanage_user', JSON.stringify(userData));
       setUser(userData);
       return true;
     }
+
+    if (email === 'teacher@school.com' && password === 'password') {
+      const userData = { email, name: 'Teacher', role: 'Teacher' };
+      localStorage.setItem('edumanage_user', JSON.stringify(userData));
+      setUser(userData);
+      return true;
+    }
+
     return false;
   };
 

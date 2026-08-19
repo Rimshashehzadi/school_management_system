@@ -12,6 +12,7 @@ Chronological record of work sessions. Newest on top.
 - Verified: server boots, MySQL connects, `/api/health` returns `{ success, data }` envelope.
 - Git: branch `feature/backend-foundation`, 2 meaningful commits (feat backend foundation, docs knowledge base).
 - `.gitignore` hardened (node_modules, .env, logs, dist).
+- Notes: first `npm install` was interrupted by the user mid-run and corrupted `node_modules` (Prisma engine postinstall missing `@prisma/debug`) — fixed with a clean reinstall.
 
 **Completed:** Backend scaffold, Express app, Prisma schema + migration, seed, git structure.
 **Pending:** Authentication (JWT login, auth middleware, role guard); Rimsha schema review.

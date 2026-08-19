@@ -17,3 +17,16 @@ npm-debug.log*
 # os
 .DS_Store
 Thumbs.db
+
+# project knowledge base (kept local only)
+obsidian/
+AGENTS.md
+manager_instructions.md
+
+# agent tooling
+.agents/
+.agent/
+skills-lock.json
+AGENTS.md
+
+obsidian

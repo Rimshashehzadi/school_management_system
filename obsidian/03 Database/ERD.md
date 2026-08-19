@@ -1,6 +1,6 @@
 # ERD (Relationships)
 
-> Status: **Proposed**. No database exists yet. This is the target relational model.
+> Status: **Implemented 2026-08-19** in `back-end/prisma/schema.prisma` (migration `20260819133018_init`). See [[03 Database/Data Model]] for field shapes and the resolved decisions.
 
 ```text
 User 1──* (login) 

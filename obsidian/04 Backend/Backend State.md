@@ -2,48 +2,50 @@
 
 ## Current Status (verified 2026-08-19)
 
-**The backend does not exist yet.**
+**Backend foundation is built and running.**
 
-- `back-end/index.js` — 0 bytes (empty file)
-- No `package.json`
-- No `node_modules`
-- No Prisma schema / migrations
-- No `.env` / `.env.example`
-- No routes, controllers, services, or middleware
+- `back-end/package.json` — express, cors, dotenv, @prisma/client, mysql2, jsonwebtoken, bcryptjs. Dev: nodemon, prisma.
+- Express app boots on port 4000 and connects to MySQL (`school_management` DB at localhost:3306).
+- `/api/health` verified working.
+- Prisma schema with 20 models + migration `20260819133018_init` applied.
+- Seed creates admin/teacher users + school profile.
+- `scripts`: `dev`, `start`, `prisma:generate`, `prisma:migrate`, `prisma:studio`, `db:seed`.
 
-## What Must Be Built (foundation first)
-
-1. `back-end/package.json` — Express, Prisma, mysql2, jsonwebtoken, bcryptjs, dotenv, cors. Dev: nodemon.
-2. Express entry (`index.js` or `src/server.js`) with JSON parsing, CORS, error handler, health-check route.
-3. Prisma init with MySQL provider; define initial schema (see [[03 Database/Data Model]]).
-4. `.env.example` with `DATABASE_URL`, `JWT_SECRET`, `PORT`.
-5. Auth: register/seed admin, login → JWT, auth middleware, role guard.
-
-## Target folder layout (proposed)
+## Folder layout
 
 ```text
 back-end/
 ├── src/
-│   ├── server.js          # entrypoint
-│   ├── app.js             # express app + middleware
-│   ├── config/            # env, prisma client singleton
-│   ├── middleware/        # auth, role guard, error handler, validation
-│   ├── routes/            # /api/auth, /api/students, ...
-│   ├── controllers/       # request handling
-│   ├── services/          # business logic
-│   └── utils/             # response helpers, async wrapper
+│   ├── server.js          # entrypoint — connects DB, starts listener
+│   ├── app.js             # express app + middleware + routes
+│   ├── config/
+│   │   ├── env.js         # env parsing
+│   │   └── prisma.js      # PrismaClient singleton
+│   ├── middleware/
+│   │   └── errorHandler.js# AppError + notFound + error handler
+│   ├── routes/
+│   │   └── index.js       # /api router (health + future modules)
+│   └── utils/
+│       ├── apiResponse.js # success/created/noContent/failure envelope
+│       └── asyncHandler.js
 ├── prisma/
 │   ├── schema.prisma
-│   └── migrations/
+│   ├── migrations/20260819133018_init/
+│   └── seed.js
 ├── package.json
 └── .env.example
 ```
 
-> This is a normal monolithic structure (routes → middleware → controllers → services → prisma → MySQL), NOT a modular monolith or microservices.
+## Missing / Next
 
-## Conventions to establish early
-- Base path: `/api`
-- JSON responses with consistent envelope (see [[04 Backend/API Conventions]])
-- Centralized error handling
-- Validation on every mutating route
-- Backend-enforced authorization (never trust frontend only)
+- Auth: `/api/auth/login`, `/api/auth/me`, JWT sign/verify, auth middleware, role guard. (Day 2)
+- Module routes/controllers/services: students, classes, sections, subjects, teachers, attendance, fees, exams, results, timetable, parents, notices, accounting, reports, backup.
+- Frontend API client + integration.
+- Tests (none yet — Postman/Thunder Client per manager plan).
+- Rimsha review of schema before it is locked as a shared contract.
+
+## Conventions in place
+- Base path `/api`, JSON envelope `{ success, data|meta|error }`.
+- Centralized error handling via `AppError(status, code, message, details)`.
+- Every mutating route must validate on the backend.
+- Backend-enforced authorization (never trust frontend only).

@@ -4,11 +4,10 @@ Track anything that affects Rimsha's work (database/backend foundation, exams, r
 
 ## Active coordination points
 
-### 1. Prisma schema — NOT YET CREATED
-- **Status:** Pending. Backend is empty.
-- **What:** Before we define `schema.prisma`, agree on shared entities (User, Student, Class, Section, Subject, Teacher, Fee, Attendance).
-- **Decision required:** Role enum vs RBAC tables; Class/Section split; soft-delete.
-- **Wait for:** Mustafa scaffolds schema; Rimsha reviews before it becomes a contract.
+### 1. Prisma schema — DRAFTED, AWAITING RIMSHA REVIEW
+- **Status:** Schema implemented in `back-end/prisma/schema.prisma` (branch `feature/backend-foundation`, migration applied locally). **Not yet reviewed by Rimsha — do not lock as contract until she confirms.**
+- **Decisions taken (revertible before lock):** role **enum** on User (no RBAC tables); Class/Section **split**; **soft-delete** status flags for users/teachers/students; guardian model = `Parent` + `StudentParent` join; `Transaction.date` DATETIME.
+- **Ask Rimsha to:** review models (User, Student, Class, Section, Subject, Teacher, Fee*, Exam*, Attendance, Parent, Notice, Timetable, Accounting), confirm or request changes before the schema is treated as a contract.
 
 ### 2. Student entity (guardian fields)
 - **What:** Parents module needs guardian info linked to students.
@@ -28,4 +27,4 @@ Track anything that affects Rimsha's work (database/backend foundation, exams, r
 - **Action:** Keep the backup JSON format centralized and versioned (`version: '1.0'` today).
 
 ## Message template for Rimsha (if needed)
-> Hi Rimsha — coordinating on the School Management System schema before it becomes a contract. Please confirm: (1) role enum vs RBAC tables, (2) Class/Section split, (3) soft-delete for students, (4) guardian model (join table vs fields). Reply so we can lock the Prisma schema and APIs.
+> Hi Rimsha — the backend foundation is up (Express + Prisma + MySQL on `feature/backend-foundation`). Before we treat the Prisma schema as a locked shared contract, please review `back-end/prisma/schema.prisma`: role enum (no RBAC tables yet), Class/Section split, soft-delete status flags, and `Parent`/`StudentParent` join for guardians. Confirm or suggest changes, and I'll adjust before Day 2 auth/student work starts.

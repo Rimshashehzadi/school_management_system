@@ -61,7 +61,9 @@ Storage helper: `front-end/src/utils/storage.js` → `getData(key, default)` / `
 
 ---
 
-## 2. Target Entities (MySQL / Prisma) — proposed
+> **Implemented 2026-08-19:** The target entities below are now in `back-end/prisma/schema.prisma` and migrated to MySQL. ERD questions 1–3 resolved: role **enum**, Class/Section **split**, **soft-delete** status flags. Awaiting Rimsha review before the schema is locked as a contract.
+
+## 2. Target Entities (MySQL / Prisma) — implemented
 
 Design constraints: must serve the existing frontend screens, keep relationships sane, and match the product requirements in AGENTS.md. **This is a proposal for discussion, not yet implemented.**
 

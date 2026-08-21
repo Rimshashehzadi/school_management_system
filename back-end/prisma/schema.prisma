@@ -1,0 +1,353 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  ACCOUNTANT
+  PRINCIPAL
+  LIBRARIAN
+  STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  OVERDUE
+}
+
+enum FeeType {
+  TUITION
+  ADMISSION
+  EXAM
+  LAB
+  TRANSPORT
+  OTHER
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionCategory {
+  FEES
+  SALARY
+  MAINTENANCE
+  UTILITIES
+  TRANSPORT
+  OTHER
+}
+
+enum ExamStatus {
+  UPCOMING
+  COMPLETED
+}
+
+enum WeekDay {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model User {
+  id                   Int                @id @default(autoincrement())
+  email                String             @unique
+  passwordHash         String
+  name                 String
+  role                 Role               @default(TEACHER)
+  status               UserStatus         @default(ACTIVE)
+  teacher              Teacher?
+  notices              Notice[]
+  attendanceRecorded   Attendance[]
+  feePaymentsCollected FeePayment[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model Teacher {
+  id          Int                    @id @default(autoincrement())
+  userId      Int                    @unique
+  user        User                   @relation(fields: [userId], references: [id])
+  name        String
+  phone       String?
+  email       String?
+  subject     String?
+  status      RecordStatus           @default(ACTIVE)
+  assignments TeacherClassSubject[]
+  timetables  Timetable[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+}
+
+model Class {
+  id            Int             @id @default(autoincrement())
+  name          String          @unique
+  sections      Section[]
+  students      Student[]
+  exams         Exam[]
+  timetables    Timetable[]
+  feeStructures FeeStructure[]
+  teacherClassSubjects TeacherClassSubject[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model Section {
+  id        Int       @id @default(autoincrement())
+  name      String
+  classId   Int
+  class     Class     @relation(fields: [classId], references: [id])
+  students  Student[]
+  timetables Timetable[]
+  createdAt DateTime  @default(now())
+
+  @@unique([classId, name])
+}
+
+model Subject {
+  id            Int                @id @default(autoincrement())
+  name          String
+  code          String             @unique
+  assignments   TeacherClassSubject[]
+  examSubjects  ExamSubject[]
+  timetables    Timetable[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model TeacherClassSubject {
+  id        Int      @id @default(autoincrement())
+  teacherId Int
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+  classId   Int
+  class     Class    @relation(fields: [classId], references: [id])
+  subjectId Int
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+
+  @@unique([teacherId, classId, subjectId])
+}
+
+model Student {
+  id              Int             @id @default(autoincrement())
+  admissionNo     String          @unique
+  name            String
+  classId         Int
+  class           Class           @relation(fields: [classId], references: [id])
+  sectionId       Int
+  section         Section         @relation(fields: [sectionId], references: [id])
+  roll            String
+  phone           String?
+  guardianName    String?
+  guardianPhone   String?
+  guardianEmail   String?
+  guardianRelation String?
+  admissionDate   DateTime?       @db.Date
+  status          RecordStatus    @default(ACTIVE)
+  attendance      Attendance[]
+  feeRecords      FeeRecord[]
+  feePayments     FeePayment[]
+  marks           Mark[]
+  studentParents  StudentParent[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([classId, sectionId, roll])
+}
+
+model Parent {
+  id        Int              @id @default(autoincrement())
+  name      String
+  phone     String?
+  email     String?
+  students  StudentParent[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model StudentParent {
+  id           Int      @id @default(autoincrement())
+  studentId    Int
+  student      Student  @relation(fields: [studentId], references: [id])
+  parentId     Int
+  parent       Parent   @relation(fields: [parentId], references: [id])
+  relationship String?
+
+  @@unique([studentId, parentId])
+}
+
+model Attendance {
+  id           Int              @id @default(autoincrement())
+  studentId    Int
+  student      Student          @relation(fields: [studentId], references: [id])
+  date         DateTime         @db.Date
+  status       AttendanceStatus @default(PRESENT)
+  recordedById Int?
+  recordedBy   User?            @relation(fields: [recordedById], references: [id])
+  createdAt    DateTime         @default(now())
+
+  @@unique([studentId, date])
+}
+
+model FeeStructure {
+  id     Int      @id @default(autoincrement())
+  classId Int
+  class  Class    @relation(fields: [classId], references: [id])
+  type   FeeType  @default(TUITION)
+  amount Decimal  @db.Decimal(10, 2)
+  period String?
+  feeRecords FeeRecord[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([classId, type])
+}
+
+model FeeRecord {
+  id             Int          @id @default(autoincrement())
+  studentId      Int
+  student        Student      @relation(fields: [studentId], references: [id])
+  feeStructureId Int?
+  feeStructure   FeeStructure? @relation(fields: [feeStructureId], references: [id])
+  title          String
+  amount         Decimal      @db.Decimal(10, 2)
+  status         PaymentStatus @default(PENDING)
+  dueDate        DateTime?    @db.Date
+  month          String?
+  payments       FeePayment[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model FeePayment {
+  id           Int        @id @default(autoincrement())
+  studentId    Int
+  student      Student    @relation(fields: [studentId], references: [id])
+  feeRecordId  Int
+  feeRecord    FeeRecord  @relation(fields: [feeRecordId], references: [id])
+  amount       Decimal    @db.Decimal(10, 2)
+  receiptNo    String     @unique
+  paymentMethod String?
+  collectedById Int?
+  collectedBy  User?      @relation(fields: [collectedById], references: [id])
+  date         DateTime   @default(now())
+  transactions Transaction[]
+  createdAt    DateTime   @default(now())
+}
+
+model Exam {
+  id        Int           @id @default(autoincrement())
+  name      String
+  classId   Int
+  class     Class         @relation(fields: [classId], references: [id])
+  date      DateTime?     @db.Date
+  status    ExamStatus    @default(UPCOMING)
+  subjects  ExamSubject[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model ExamSubject {
+  id         Int        @id @default(autoincrement())
+  examId     Int
+  exam       Exam       @relation(fields: [examId], references: [id])
+  subjectId  Int
+  subject    Subject    @relation(fields: [subjectId], references: [id])
+  totalMarks Int        @default(100)
+  date       DateTime?  @db.Date
+  marks      Mark[]
+  createdAt  DateTime   @default(now())
+
+  @@unique([examId, subjectId])
+}
+
+model Mark {
+  id            Int        @id @default(autoincrement())
+  studentId     Int
+  student       Student    @relation(fields: [studentId], references: [id])
+  examSubjectId Int
+  examSubject   ExamSubject @relation(fields: [examSubjectId], references: [id])
+  obtainedMarks Decimal    @db.Decimal(5, 2)
+  grade         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([studentId, examSubjectId])
+}
+
+model Timetable {
+  id        Int       @id @default(autoincrement())
+  classId   Int
+  class     Class     @relation(fields: [classId], references: [id])
+  sectionId Int?
+  section   Section?  @relation(fields: [sectionId], references: [id])
+  subjectId Int
+  subject   Subject   @relation(fields: [subjectId], references: [id])
+  teacherId Int
+  teacher   Teacher   @relation(fields: [teacherId], references: [id])
+  day       WeekDay
+  period    Int
+  startTime String?
+  endTime   String?
+
+  @@unique([classId, sectionId, day, period])
+}
+
+model Notice {
+  id          Int      @id @default(autoincrement())
+  title       String
+  body        String
+  audience    String
+  createdById Int
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Transaction {
+  id          Int                @id @default(autoincrement())
+  type        TransactionType
+  title       String
+  amount      Decimal            @db.Decimal(10, 2)
+  category    TransactionCategory @default(OTHER)
+  date        DateTime           @default(now())
+  feePaymentId Int?
+  feePayment  FeePayment?        @relation(fields: [feePaymentId], references: [id])
+  createdAt   DateTime           @default(now())
+}
+
+model SchoolProfile {
+  id           Int      @id @default(autoincrement())
+  name         String
+  address      String?
+  phone        String?
+  email        String?
+  academicYear String?
+  updatedAt    DateTime @updatedAt
+}

@@ -1,8 +1,15 @@
 import { app } from './app.js';
-import { env } from './config/env.js';
+import { assertEnv, env } from './config/env.js';
 import { prisma } from './config/prisma.js';
 
 async function main() {
+  try {
+    assertEnv();
+  } catch (err) {
+    console.error('[env]', err.message);
+    process.exit(1);
+  }
+
   try {
     await prisma.$connect();
     console.log('[db] MySQL connected');

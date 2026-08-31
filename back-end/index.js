@@ -1,15 +1,7 @@
-const express = require("express");
-
-const app = express();
+const app = require("./src/app");
 
 const PORT = 5000;
 
-app.use(express.json());
-
-app.get("/", (req, res) => {
-  res.send("Backend server is running successfully!");
-});
-
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`SERVER STARTED: http://localhost:${PORT}`);
 });

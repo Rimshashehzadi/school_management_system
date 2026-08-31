@@ -5,9 +5,84 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
+  output   = "../src/generated/prisma"
+  moduleFormat = "cjs"
+  generatedFileExtension = "cts"
 }
 
 datasource db {
   provider = "mysql"
+}
+
+model Student {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  marks     Mark[]
+
+  @@map("students")
+}
+
+model Subject {
+  id        Int      @id @default(autoincrement())
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  examSubjects ExamSubject[]
+
+  @@map("subjects")
+}
+
+model Exam {
+  id        Int      @id @default(autoincrement())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  examSubjects ExamSubject[]
+
+  @@map("exams")
+}
+
+model ExamSubject {
+  id           Int      @id @default(autoincrement())
+  examId       Int
+  subjectId    Int
+  totalMarks   Int
+  passingMarks Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  marks   Mark[]
+
+  @@unique([examId, subjectId])
+  @@index([examId])
+  @@index([subjectId])
+  @@map("exam_subjects")
+}
+
+model Mark {
+  id            Int      @id @default(autoincrement())
+  studentId     Int
+  examSubjectId Int
+  obtainedMarks Decimal  @db.Decimal(5, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  examSubject ExamSubject @relation(fields: [examSubjectId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, examSubjectId])
+  @@index([studentId])
+  @@index([examSubjectId])
+  @@map("marks")
 }

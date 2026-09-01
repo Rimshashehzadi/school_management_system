@@ -1,18 +1,14 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  moduleFormat = "cjs"
-  generatedFileExtension = "cts"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "mysql"
 }
+
+// ==========================================
+// STUDENT
+// ==========================================
 
 model Student {
   id        Int      @id @default(autoincrement())
@@ -21,10 +17,14 @@ model Student {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  marks     Mark[]
+  marks Mark[]
 
   @@map("students")
 }
+
+// ==========================================
+// SUBJECT
+// ==========================================
 
 model Subject {
   id        Int      @id @default(autoincrement())
@@ -34,9 +34,14 @@ model Subject {
   updatedAt DateTime @updatedAt
 
   examSubjects ExamSubject[]
+  timetables   Timetable[]
 
   @@map("subjects")
 }
+
+// ==========================================
+// EXAM
+// ==========================================
 
 model Exam {
   id        Int      @id @default(autoincrement())
@@ -50,6 +55,10 @@ model Exam {
 
   @@map("exams")
 }
+
+// ==========================================
+// EXAM SUBJECT
+// ==========================================
 
 model ExamSubject {
   id           Int      @id @default(autoincrement())
@@ -70,6 +79,10 @@ model ExamSubject {
   @@map("exam_subjects")
 }
 
+// ==========================================
+// MARK
+// ==========================================
+
 model Mark {
   id            Int      @id @default(autoincrement())
   studentId     Int
@@ -85,4 +98,77 @@ model Mark {
   @@index([studentId])
   @@index([examSubjectId])
   @@map("marks")
+}
+
+// ==========================================
+// TEACHER
+// ==========================================
+
+model Teacher {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timetables Timetable[]
+
+  @@map("teachers")
+}
+
+// ==========================================
+// CLASS
+// ==========================================
+
+model Class {
+  id        Int      @id @default(autoincrement())
+  name      String
+  section   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timetables Timetable[]
+
+  @@map("classes")
+}
+
+// ==========================================
+// TIMETABLE
+// ==========================================
+
+model Timetable {
+  id Int @id @default(autoincrement())
+
+  classId   Int
+  subjectId Int
+  teacherId Int
+
+  day       String
+  startTime String
+  endTime   String
+  room      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ==========================================
+  // RELATIONS
+  // ==========================================
+
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // ==========================================
+  // INDEXES
+  // ==========================================
+
+  @@index([classId])
+  @@index([subjectId])
+  @@index([teacherId])
+  @@index([day])
+  // Useful for timetable queries
+  @@index([classId, day])
+  @@index([teacherId, day])
+  @@map("timetables")
 }

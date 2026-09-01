@@ -1,13 +1,28 @@
 const express = require("express");
 
 const {
-  addExamSubject,
+  createExamSubject,
   getExamSubjects,
+  getExamSubjectById,
+  updateExamSubject,
+  deleteExamSubject,
 } = require("../controllers/examSubjectController");
 
 const router = express.Router();
 
-router.post("/:examId/subjects", addExamSubject);
-router.get("/:examId/subjects", getExamSubjects);
+// Create exam subject
+router.post("/", createExamSubject);
+
+// Get all exam subjects
+router.get("/", getExamSubjects);
+
+// Get exam subject by ID
+router.get("/:id", getExamSubjectById);
+
+// Update exam subject
+router.put("/:id", updateExamSubject);
+
+// Delete exam subject
+router.delete("/:id", deleteExamSubject);
 
 module.exports = router;

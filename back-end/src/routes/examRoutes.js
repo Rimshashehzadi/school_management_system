@@ -1,31 +1,28 @@
-
-// const express = require("express");
-
-// const {
-//   createExam,
-//   getExams,
-//   getExamById,
-//   updateExam,
-//   deleteExam,
-// } = require("../controllers/examController");
-
-// const router = express.Router();
-
-// router.post("/", createExam);
-// router.get("/", getExams);
-// router.get("/:id", getExamById);
-// router.put("/:id", updateExam);
-// router.delete("/:id", deleteExam);
-
-// module.exports = router;
 const express = require("express");
+
+const {
+  createExam,
+  getExams,
+  getExamById,
+  updateExam,
+  deleteExam,
+} = require("../controllers/examController");
 
 const router = express.Router();
 
-router.get("/", (req, res) => {
-  res.json({
-    message: "EXAM ROUTE IS WORKING",
-  });
-});
+// Create exam
+router.post("/", createExam);
+
+// Get all exams
+router.get("/", getExams);
+
+// Get single exam
+router.get("/:id", getExamById);
+
+// Update exam
+router.put("/:id", updateExam);
+
+// Delete exam
+router.delete("/:id", deleteExam);
 
 module.exports = router;

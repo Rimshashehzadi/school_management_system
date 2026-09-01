@@ -1,24 +1,25 @@
 {
   "name": "back-end",
   "version": "1.0.0",
-  "description": "",
+  "description": "School Management System Backend",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
-    "postinstall": "prisma skills sync || exit 0"
+    "dev": "nodemon index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.10.0",
     "@prisma/client": "^7.10.0",
-    "express": "^5.2.1"
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mariadb": "^3.5.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14",
+    "@types/node": "^26.4.0",
+    "nodemon": "^3.1.10",
     "prisma": "^7.10.0"
   }
 }

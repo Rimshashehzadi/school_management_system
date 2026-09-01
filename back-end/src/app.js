@@ -10,10 +10,13 @@ const examSubjectRoutes = require("./routes/examSubjectRoutes");
 const marksRoutes = require("./routes/marksRoutes");
 const resultRoutes = require("./routes/resultRoutes");
 
-// DAY 4
+// DAY 4 ROUTES
 const teacherRoutes = require("./routes/teacherRoutes");
 const classRoutes = require("./routes/classRoutes");
 const timetableRoutes = require("./routes/timetableRoutes");
+//  Day 5
+const parentRoutes = require("./routes/parentRoutes");
+const parentStudentRoutes = require("./routes/parentStudentRoutes");
 
 // ===============================
 // PRISMA
@@ -285,7 +288,6 @@ app.get("/debug-marks", async (req, res) => {
 });
 
 // ==================================================
-// DAY 4
 // DEBUG - GET ALL TEACHERS
 // ==================================================
 
@@ -314,7 +316,6 @@ app.get("/debug-teachers", async (req, res) => {
 });
 
 // ==================================================
-// DAY 4
 // DEBUG - GET ALL CLASSES
 // ==================================================
 
@@ -343,7 +344,6 @@ app.get("/debug-classes", async (req, res) => {
 });
 
 // ==================================================
-// DAY 4
 // DEBUG - GET ALL TIMETABLES
 // ==================================================
 
@@ -423,6 +423,11 @@ app.use("/api/classes", classRoutes);
 
 app.use("/api/timetables", timetableRoutes);
 
+// DAY 5 - PARENT API
+app.use("/api/parents", parentRoutes);
+// DAY 5 - PARENT STUDENT RELATIONSHIP
+app.use("/api/parent-students", parentStudentRoutes);
+
 // ==================================================
 // DEBUG - API ROUTES CHECK
 // ==================================================
@@ -438,12 +443,10 @@ app.get("/debug-api", (req, res) => {
       marks: "/api/marks",
       results: "/api/results",
 
-      // DAY 4
       teachers: "/api/teachers",
       classes: "/api/classes",
       timetables: "/api/timetables",
 
-      // DEBUG
       debugTeachers: "/debug-teachers",
       debugClasses: "/debug-classes",
       debugTimetables: "/debug-timetables",

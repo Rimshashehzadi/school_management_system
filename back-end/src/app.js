@@ -17,6 +17,8 @@ const timetableRoutes = require("./routes/timetableRoutes");
 //  Day 5
 const parentRoutes = require("./routes/parentRoutes");
 const parentStudentRoutes = require("./routes/parentStudentRoutes");
+const noticeRoutes = require("./routes/noticeRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 // ===============================
 // PRISMA
@@ -427,6 +429,16 @@ app.use("/api/timetables", timetableRoutes);
 app.use("/api/parents", parentRoutes);
 // DAY 5 - PARENT STUDENT RELATIONSHIP
 app.use("/api/parent-students", parentStudentRoutes);
+// ==================================================
+// DAY 5 - NOTICE API
+// ==================================================
+
+app.use("/api/notices", noticeRoutes);
+// ==================================================
+// DAY 5 - USER API
+// ==================================================
+
+app.use("/api/users", userRoutes);
 
 // ==================================================
 // DEBUG - API ROUTES CHECK

@@ -8,21 +8,69 @@ const {
   deleteNotice,
 } = require("../controllers/noticeController");
 
+const authMiddleware = require("../middleware/authMiddleware");
+const authorizeRoles = require("../middleware/roleMiddleware");
+
 const router = express.Router();
 
-// CREATE
-router.post("/", createNotice);
+// ==========================================
+// GET ALL NOTICES
+// ADMIN, TEACHER, PARENT, STUDENT
+// ==========================================
 
-// GET ALL
-router.get("/", getNotices);
+router.get(
+  "/",
+  authMiddleware,
+  authorizeRoles("ADMIN", "TEACHER", "PARENT", "STUDENT"),
+  getNotices
+);
 
-// GET BY ID
-router.get("/:id", getNoticeById);
+// ==========================================
+// GET NOTICE BY ID
+// ADMIN, TEACHER, PARENT, STUDENT
+// ==========================================
 
-// UPDATE
-router.put("/:id", updateNotice);
+router.get(
+  "/:id",
+  authMiddleware,
+  authorizeRoles("ADMIN", "TEACHER", "PARENT", "STUDENT"),
+  getNoticeById
+);
 
-// DELETE
-router.delete("/:id", deleteNotice);
+// ==========================================
+// CREATE NOTICE
+// ADMIN, TEACHER
+// ==========================================
+
+router.post(
+  "/",
+  authMiddleware,
+  authorizeRoles("ADMIN", "TEACHER"),
+  createNotice
+);
+
+// ==========================================
+// UPDATE NOTICE
+// ADMIN, TEACHER
+// ==========================================
+
+router.put(
+  "/:id",
+  authMiddleware,
+  authorizeRoles("ADMIN", "TEACHER"),
+  updateNotice
+);
+
+// ==========================================
+// DELETE NOTICE
+// ADMIN ONLY
+// ==========================================
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  authorizeRoles("ADMIN"),
+  deleteNotice
+);
 
 module.exports = router;

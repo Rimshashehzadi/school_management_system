@@ -1,4 +1,3 @@
-
 const express = require("express");
 
 const {
@@ -9,22 +8,69 @@ const {
   deleteParent,
 } = require("../controllers/parentController");
 
+const authMiddleware = require("../middleware/authMiddleware");
+const authorizeRoles = require("../middleware/roleMiddleware");
+
 const router = express.Router();
 
+// ==========================================
 // CREATE PARENT
-router.post("/", createParent);
+// ADMIN ONLY
+// ==========================================
 
+router.post(
+  "/",
+  authMiddleware,
+  authorizeRoles("ADMIN"),
+  createParent
+);
+
+// ==========================================
 // GET ALL PARENTS
-router.get("/", getParents);
+// ADMIN, TEACHER
+// ==========================================
 
+router.get(
+  "/",
+  authMiddleware,
+  authorizeRoles("ADMIN", "TEACHER"),
+  getParents
+);
+
+// ==========================================
 // GET PARENT BY ID
-router.get("/:id", getParentById);
+// ADMIN, TEACHER
+// ==========================================
 
+router.get(
+  "/:id",
+  authMiddleware,
+  authorizeRoles("ADMIN", "TEACHER"),
+  getParentById
+);
+
+// ==========================================
 // UPDATE PARENT
-router.put("/:id", updateParent);
+// ADMIN ONLY
+// ==========================================
 
+router.put(
+  "/:id",
+  authMiddleware,
+  authorizeRoles("ADMIN"),
+  updateParent
+);
+
+// ==========================================
 // DELETE PARENT
-router.delete("/:id", deleteParent);
+// ADMIN ONLY
+// ==========================================
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  authorizeRoles("ADMIN"),
+  deleteParent
+);
 
 module.exports = router;
-

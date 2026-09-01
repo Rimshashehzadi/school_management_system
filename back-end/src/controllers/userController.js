@@ -1,6 +1,6 @@
-
 const prisma = require("../config/prisma");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 // ==================================================
 // CREATE USER
@@ -19,7 +19,7 @@ const createUser = async (req, res) => {
     }
 
     // Validate role
-    const allowedRoles = ["ADMIN", "TEACHER", "PARENT"];
+    const allowedRoles = ["ADMIN", "TEACHER", "PARENT", "STUDENT"];
 
     if (role && !allowedRoles.includes(role)) {
       return res.status(400).json({
@@ -69,6 +69,92 @@ const createUser = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to create user",
+      error: error.message,
+    });
+  }
+};
+
+// ==================================================
+// LOGIN USER
+// ==================================================
+
+const loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    // Compare password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    // Check JWT secret
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is missing from .env");
+
+      return res.status(500).json({
+        success: false,
+        message: "JWT configuration is missing",
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("LOGIN USER ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Login failed",
       error: error.message,
     });
   }
@@ -191,7 +277,7 @@ const updateUser = async (req, res) => {
     }
 
     // Validate role
-    const allowedRoles = ["ADMIN", "TEACHER", "PARENT"];
+    const allowedRoles = ["ADMIN", "TEACHER", "PARENT", "STUDENT"];
 
     if (role && !allowedRoles.includes(role)) {
       return res.status(400).json({
@@ -315,11 +401,15 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// ==================================================
+// EXPORTS
+// ==================================================
+
 module.exports = {
   createUser,
+  loginUser,
   getUsers,
   getUserById,
   updateUser,
   deleteUser,
 };
-

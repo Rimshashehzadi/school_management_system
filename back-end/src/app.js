@@ -19,6 +19,16 @@ const parentRoutes = require("./routes/parentRoutes");
 const parentStudentRoutes = require("./routes/parentStudentRoutes");
 const noticeRoutes = require("./routes/noticeRoutes");
 const userRoutes = require("./routes/userRoutes");
+//  Day 6
+
+const dashboardRoutes = require("./routes/dashboardRoutes");
+const studentReportRoutes = require("./routes/studentReportRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");
+const attendanceReportRoutes = require("./routes/attendanceReportRoutes");
+const feeRoutes = require("./routes/feeRoutes");
+const feeReportRoutes = require("./routes/feeReportRoutes");
+const examReportRoutes = require("./routes/examReportRoutes");
+const studentExportRoutes = require("./routes/studentExportRoutes");
 
 // ===============================
 // PRISMA
@@ -439,6 +449,20 @@ app.use("/api/notices", noticeRoutes);
 // ==================================================
 
 app.use("/api/users", userRoutes);
+
+// ==================================================
+// DAY 6 - DASHBOARD API
+// ==================================================
+
+app.use("/api/dashboard", dashboardRoutes);
+
+app.use("/api/student-reports", studentReportRoutes);
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/attendance-reports", attendanceReportRoutes);
+app.use("/api/fees", feeRoutes);
+app.use("/api/fee-reports", feeReportRoutes);
+app.use("/api/exam-reports", examReportRoutes);
+app.use("/api/export", studentExportRoutes);
 
 // ==================================================
 // DEBUG - API ROUTES CHECK

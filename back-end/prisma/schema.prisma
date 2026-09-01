@@ -6,10 +6,9 @@ datasource db {
   provider = "mysql"
 }
 
-// ==========================================
+// ===============================
 // STUDENT
-// ==========================================
-
+// ===============================
 model Student {
   id        Int      @id @default(autoincrement())
   name      String
@@ -17,18 +16,17 @@ model Student {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  marks Mark[]
-
-  // DAY 5 - Parent/Guardian relationship
+  marks          Mark[]
   parentStudents ParentStudent[]
+  attendance     Attendance[]
+  fees           Fee[]
 
   @@map("students")
 }
 
-// ==========================================
+// ===============================
 // SUBJECT
-// ==========================================
-
+// ===============================
 model Subject {
   id        Int      @id @default(autoincrement())
   name      String
@@ -42,10 +40,9 @@ model Subject {
   @@map("subjects")
 }
 
-// ==========================================
+// ===============================
 // EXAM
-// ==========================================
-
+// ===============================
 model Exam {
   id        Int      @id @default(autoincrement())
   name      String
@@ -59,10 +56,9 @@ model Exam {
   @@map("exams")
 }
 
-// ==========================================
+// ===============================
 // EXAM SUBJECT
-// ==========================================
-
+// ===============================
 model ExamSubject {
   id           Int      @id @default(autoincrement())
   examId       Int
@@ -82,10 +78,9 @@ model ExamSubject {
   @@map("exam_subjects")
 }
 
-// ==========================================
+// ===============================
 // MARK
-// ==========================================
-
+// ===============================
 model Mark {
   id            Int      @id @default(autoincrement())
   studentId     Int
@@ -103,10 +98,9 @@ model Mark {
   @@map("marks")
 }
 
-// ==========================================
+// ===============================
 // TEACHER
-// ==========================================
-
+// ===============================
 model Teacher {
   id        Int      @id @default(autoincrement())
   name      String
@@ -119,10 +113,9 @@ model Teacher {
   @@map("teachers")
 }
 
-// ==========================================
+// ===============================
 // CLASS
-// ==========================================
-
+// ===============================
 model Class {
   id        Int      @id @default(autoincrement())
   name      String
@@ -135,10 +128,9 @@ model Class {
   @@map("classes")
 }
 
-// ==========================================
+// ===============================
 // TIMETABLE
-// ==========================================
-
+// ===============================
 model Timetable {
   id Int @id @default(autoincrement())
 
@@ -154,17 +146,9 @@ model Timetable {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // ==========================================
-  // RELATIONS
-  // ==========================================
-
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
-  // ==========================================
-  // INDEXES
-  // ==========================================
 
   @@index([classId])
   @@index([subjectId])
@@ -175,10 +159,9 @@ model Timetable {
   @@map("timetables")
 }
 
-// ==========================================
-// DAY 5 - PARENT / GUARDIAN
-// ==========================================
-
+// ===============================
+// PARENT
+// ===============================
 model Parent {
   id        Int      @id @default(autoincrement())
   name      String
@@ -187,16 +170,14 @@ model Parent {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Parent can have multiple students
   parentStudents ParentStudent[]
 
   @@map("parents")
 }
 
-// ==========================================
-// DAY 5 - PARENT STUDENT RELATIONSHIP
-// ==========================================
-
+// ===============================
+// PARENT STUDENT
+// ===============================
 model ParentStudent {
   id        Int      @id @default(autoincrement())
   parentId  Int
@@ -208,17 +189,15 @@ model ParentStudent {
   parent  Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  // Same parent cannot be connected to the same student twice
   @@unique([parentId, studentId])
   @@index([parentId])
   @@index([studentId])
   @@map("parent_students")
 }
 
-// ==========================================
-// NOTICE / ANNOUNCEMENT
-// ==========================================
-
+// ===============================
+// NOTICE
+// ===============================
 model Notice {
   id        Int      @id @default(autoincrement())
   title     String
@@ -230,10 +209,9 @@ model Notice {
   @@map("notices")
 }
 
-// ==========================================
+// ===============================
 // USER
-// ==========================================
-
+// ===============================
 model User {
   id       Int      @id @default(autoincrement())
   name     String
@@ -248,12 +226,74 @@ model User {
   @@map("users")
 }
 
-// ==========================================
-// USER ROLE
-// ==========================================
+// ===============================
+// ATTENDANCE
+// ===============================
+model Attendance {
+  id        Int              @id @default(autoincrement())
+  studentId Int
+  date      DateTime         @db.Date
+  status    AttendanceStatus
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@index([studentId])
+  @@index([date])
+  @@map("attendance")
+}
+
+// ===============================
+// FEE
+// ===============================
+model Fee {
+  id        Int @id @default(autoincrement())
+  studentId Int
+
+  amount     Decimal   @db.Decimal(10, 2)
+  paidAmount Decimal   @db.Decimal(10, 2)
+  dueDate    DateTime  @db.Date
+  status     FeeStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([dueDate])
+  @@index([status])
+  @@map("fees")
+}
+
+// ===============================
+// USER ROLE
+// ===============================
 enum UserRole {
   ADMIN
   TEACHER
   PARENT
+  STUDENT
+}
+
+// ===============================
+// ATTENDANCE STATUS
+// ===============================
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+// ===============================
+// FEE STATUS
+// ===============================
+enum FeeStatus {
+  PENDING
+  PAID
+  PARTIAL
+  OVERDUE
 }

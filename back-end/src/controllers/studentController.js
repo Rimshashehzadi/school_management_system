@@ -1,4 +1,5 @@
 const prisma = require("../config/prisma");
+const csvParser = require("csv-parser");
 
 // ==========================================
 // CREATE STUDENT
@@ -35,8 +36,8 @@ const createStudent = async (req, res) => {
     // Create student
     const student = await prisma.student.create({
       data: {
-        name,
-        email: email || null,
+        name: name.trim(),
+        email: email ? email.trim() : null,
       },
     });
 
@@ -187,8 +188,12 @@ const updateStudent = async (req, res) => {
         id,
       },
       data: {
-        ...(name !== undefined && { name }),
-        ...(email !== undefined && { email: email || null }),
+        ...(name !== undefined && {
+          name: name.trim(),
+        }),
+        ...(email !== undefined && {
+          email: email ? email.trim() : null,
+        }),
       },
     });
 
@@ -257,10 +262,133 @@ const deleteStudent = async (req, res) => {
   }
 };
 
+// ==========================================
+// IMPORT STUDENTS FROM CSV
+// POST /api/students/import
+// ==========================================
+const importStudents = async (req, res) => {
+  try {
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "CSV file is required",
+      });
+    }
+
+    const students = [];
+    const skipped = [];
+
+    // Read CSV file
+    const stream = require("stream");
+
+    const readableStream = stream.Readable.from(req.file.buffer);
+
+    readableStream
+      .pipe(csvParser())
+      .on("data", (row) => {
+        students.push(row);
+      })
+      .on("end", async () => {
+        try {
+          if (students.length === 0) {
+            return res.status(400).json({
+              success: false,
+              message: "CSV file is empty",
+            });
+          }
+
+          let importedCount = 0;
+
+          for (const row of students) {
+            const name = row.name?.trim();
+            const email = row.email?.trim() || null;
+
+            // Name is required
+            if (!name) {
+              skipped.push({
+                row,
+                reason: "Student name is required",
+              });
+
+              continue;
+            }
+
+            // Check duplicate email
+            if (email) {
+              const existingStudent = await prisma.student.findUnique({
+                where: {
+                  email,
+                },
+              });
+
+              if (existingStudent) {
+                skipped.push({
+                  name,
+                  email,
+                  reason: "Email already exists",
+                });
+
+                continue;
+              }
+            }
+
+            // Create student
+            await prisma.student.create({
+              data: {
+                name,
+                email,
+              },
+            });
+
+            importedCount++;
+          }
+
+          return res.status(201).json({
+            success: true,
+            message: "CSV import completed successfully",
+            importedCount,
+            skippedCount: skipped.length,
+            skipped,
+          });
+        } catch (error) {
+          console.error("CSV IMPORT DATABASE ERROR:", error);
+
+          return res.status(500).json({
+            success: false,
+            message: "Failed to import students",
+            error: error.message,
+          });
+        }
+      })
+      .on("error", (error) => {
+        console.error("CSV PARSE ERROR:", error);
+
+        return res.status(400).json({
+          success: false,
+          message: "Invalid CSV file",
+          error: error.message,
+        });
+      });
+  } catch (error) {
+    console.error("IMPORT STUDENTS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to import students",
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
+// EXPORT CONTROLLERS
+// ==========================================
 module.exports = {
   createStudent,
   getStudents,
   getStudentById,
   updateStudent,
   deleteStudent,
+  importStudents,
 };

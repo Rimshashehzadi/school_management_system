@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   Plus,
@@ -10,6 +11,10 @@ import {
 const PARENT_API = "http://localhost:5000/api/parents";
 const STUDENT_API = "http://localhost:5000/api/students";
 const RELATION_API = "http://localhost:5000/api/parent-students";
+
+// ==================================================
+// GET AUTH TOKEN
+// ==================================================
 
 const getToken = () => {
   const token = localStorage.getItem("token");
@@ -26,6 +31,10 @@ const getToken = () => {
   return token.trim();
 };
 
+// ==================================================
+// COMPONENT
+// ==================================================
+
 export default function ParentStudent() {
   const [parents, setParents] = useState([]);
   const [students, setStudents] = useState([]);
@@ -37,17 +46,18 @@ export default function ParentStudent() {
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
 
+  // Parent and Student are now TEXT values
   const [form, setForm] = useState({
-    parentId: "",
-    studentId: "",
+    parentName: "",
+    studentName: "",
     relation: "Father",
   });
 
   const [error, setError] = useState("");
 
-  // ==========================================
+  // ==================================================
   // FETCH DATA
-  // ==========================================
+  // ==================================================
 
   const fetchData = async () => {
     const token = getToken();
@@ -67,7 +77,10 @@ export default function ParentStudent() {
         "Content-Type": "application/json",
       };
 
-      // Get parents
+      // ==================================================
+      // GET PARENTS
+      // ==================================================
+
       const parentResponse = await fetch(PARENT_API, {
         method: "GET",
         headers,
@@ -87,7 +100,10 @@ export default function ParentStudent() {
         );
       }
 
-      // Get students
+      // ==================================================
+      // GET STUDENTS
+      // ==================================================
+
       const studentResponse = await fetch(STUDENT_API, {
         method: "GET",
         headers,
@@ -113,9 +129,9 @@ export default function ParentStudent() {
       setParents(parentData);
       setStudents(studentData);
 
-      // ==========================================
+      // ==================================================
       // GET RELATIONSHIPS FOR EACH PARENT
-      // ==========================================
+      // ==================================================
 
       const relationshipResults = await Promise.all(
         parentData.map(async (parent) => {
@@ -151,7 +167,6 @@ export default function ParentStudent() {
         })
       );
 
-      // Combine all parent relationships
       const allRelationships = relationshipResults.flat();
 
       setRelationships(allRelationships);
@@ -166,13 +181,17 @@ export default function ParentStudent() {
     }
   };
 
+  // ==================================================
+  // INITIAL LOAD
+  // ==================================================
+
   useEffect(() => {
     fetchData();
   }, []);
 
-  // ==========================================
-  // OPEN MODAL
-  // ==========================================
+  // ==================================================
+  // OPEN ADD MODAL
+  // ==================================================
 
   const openAddModal = () => {
     const token = getToken();
@@ -183,23 +202,37 @@ export default function ParentStudent() {
     }
 
     setForm({
-      parentId: "",
-      studentId: "",
+      parentName: "",
+      studentName: "",
       relation: "Father",
     });
 
+    setError("");
     setShowModal(true);
   };
 
-  // ==========================================
+  // ==================================================
   // CREATE RELATIONSHIP
-  // ==========================================
+  // ==================================================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.parentId || !form.studentId) {
-      alert("Please select both parent and student.");
+    const parentName = form.parentName.trim();
+    const studentName = form.studentName.trim();
+
+    if (!parentName) {
+      alert("Please enter parent / guardian name.");
+      return;
+    }
+
+    if (!studentName) {
+      alert("Please enter student name.");
+      return;
+    }
+
+    if (!form.relation) {
+      alert("Please select relation.");
       return;
     }
 
@@ -214,25 +247,27 @@ export default function ParentStudent() {
       setSaving(true);
       setError("");
 
-      // ==========================================
-      // ACTUAL BACKEND ROUTE:
-      // POST /api/parent-students/:parentId/students
-      // ==========================================
+      // ==================================================
+      // BACKEND ROUTE
+      // POST /api/parent-students
+      //
+      // Backend finds/creates parent by name,
+      // finds student by name,
+      // then creates relationship.
+      // ==================================================
 
-      const response = await fetch(
-        `${RELATION_API}/${form.parentId}/students`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            studentId: Number(form.studentId),
-            relation: form.relation,
-          }),
-        }
-      );
+      const response = await fetch(RELATION_API, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          parentName,
+          studentName,
+          relation: form.relation,
+        }),
+      });
 
       const result = await response.json();
 
@@ -246,27 +281,40 @@ export default function ParentStudent() {
         return;
       }
 
+      if (response.status === 403) {
+        setError(
+          "You do not have permission to link a parent with a student."
+        );
+
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(
           result.message || "Failed to create relationship"
         );
       }
 
+      // ==================================================
+      // SUCCESS
+      // ==================================================
+
       alert("Parent linked with student successfully.");
 
       setShowModal(false);
 
       setForm({
-        parentId: "",
-        studentId: "",
+        parentName: "",
+        studentName: "",
         relation: "Father",
       });
 
+      // Reload DB data so UI immediately shows saved record
       await fetchData();
     } catch (err) {
       console.error("CREATE RELATIONSHIP ERROR:", err);
 
-      alert(
+      setError(
         err.message || "Failed to link parent with student"
       );
     } finally {
@@ -274,9 +322,9 @@ export default function ParentStudent() {
     }
   };
 
-  // ==========================================
+  // ==================================================
   // DELETE RELATIONSHIP
-  // ==========================================
+  // ==================================================
 
   const handleDelete = async (parentId, studentId) => {
     const confirmed = window.confirm(
@@ -293,10 +341,7 @@ export default function ParentStudent() {
     }
 
     try {
-      // ==========================================
-      // ACTUAL BACKEND ROUTE:
-      // DELETE /api/parent-students/:parentId/students/:studentId
-      // ==========================================
+      setError("");
 
       const response = await fetch(
         `${RELATION_API}/${parentId}/students/${studentId}`,
@@ -321,10 +366,17 @@ export default function ParentStudent() {
         return;
       }
 
+      if (response.status === 403) {
+        setError(
+          "You do not have permission to remove this relationship."
+        );
+
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(
-          result.message ||
-            "Failed to delete relationship"
+          result.message || "Failed to delete relationship"
         );
       }
 
@@ -336,16 +388,16 @@ export default function ParentStudent() {
     } catch (err) {
       console.error("DELETE RELATIONSHIP ERROR:", err);
 
-      alert(
+      setError(
         err.message ||
           "Failed to remove parent-student relationship"
       );
     }
   };
 
-  // ==========================================
+  // ==================================================
   // SEARCH
-  // ==========================================
+  // ==================================================
 
   const filteredRelationships = relationships.filter((item) => {
     const parentName =
@@ -366,14 +418,16 @@ export default function ParentStudent() {
     );
   });
 
-  // ==========================================
+  // ==================================================
   // UI
-  // ==========================================
+  // ==================================================
 
   return (
     <div className="space-y-6">
 
-      {/* HEADER */}
+      {/* ==================================================
+          HEADER
+      ================================================== */}
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -395,7 +449,9 @@ export default function ParentStudent() {
         </button>
       </div>
 
-      {/* ERROR */}
+      {/* ==================================================
+          ERROR
+      ================================================== */}
 
       {error && (
         <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl">
@@ -403,7 +459,9 @@ export default function ParentStudent() {
         </div>
       )}
 
-      {/* SEARCH */}
+      {/* ==================================================
+          SEARCH
+      ================================================== */}
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -417,7 +475,9 @@ export default function ParentStudent() {
         />
       </div>
 
-      {/* TABLE */}
+      {/* ==================================================
+          TABLE
+      ================================================== */}
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
@@ -440,131 +500,126 @@ export default function ParentStudent() {
             >
               Link a parent with a student
             </button>
+
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full">
 
-            <thead className="bg-slate-50 border-b border-slate-100">
-              <tr>
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
 
-                <th className="text-left text-xs font-semibold text-slate-500 uppercase px-6 py-4">
-                  Parent
-                </th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase px-6 py-4">
+                    Parent
+                  </th>
 
-                <th className="text-left text-xs font-semibold text-slate-500 uppercase px-6 py-4">
-                  Student
-                </th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase px-6 py-4">
+                    Student
+                  </th>
 
-                <th className="text-left text-xs font-semibold text-slate-500 uppercase px-6 py-4">
-                  Relation
-                </th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase px-6 py-4">
+                    Relation
+                  </th>
 
-                <th className="text-left text-xs font-semibold text-slate-500 uppercase px-6 py-4">
-                  Linked On
-                </th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase px-6 py-4">
+                    Linked On
+                  </th>
 
-                <th className="text-right text-xs font-semibold text-slate-500 uppercase px-6 py-4">
-                  Actions
-                </th>
-
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-50">
-
-              {filteredRelationships.map((item) => (
-                <tr
-                  key={item.id}
-                  className="hover:bg-slate-50 transition"
-                >
-
-                  {/* PARENT */}
-
-                  <td className="px-6 py-4">
-
-                    <div className="font-medium text-slate-900">
-                      {item.parent?.name || "Unknown Parent"}
-                    </div>
-
-                    {item.parent?.email && (
-                      <div className="text-sm text-slate-500">
-                        {item.parent.email}
-                      </div>
-                    )}
-
-                  </td>
-
-                  {/* STUDENT */}
-
-                  <td className="px-6 py-4">
-
-                    <div className="font-medium text-slate-900">
-                      {item.student?.name || "Unknown Student"}
-                    </div>
-
-                    {item.student?.class && (
-                      <div className="text-sm text-slate-500">
-                        Class: {item.student.class}
-                      </div>
-                    )}
-
-                  </td>
-
-                  {/* RELATION */}
-
-                  <td className="px-6 py-4">
-
-                    <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
-                      {item.relation || "Guardian"}
-                    </span>
-
-                  </td>
-
-                  {/* DATE */}
-
-                  <td className="px-6 py-4 text-slate-600">
-
-                    {item.createdAt
-                      ? new Date(
-                          item.createdAt
-                        ).toLocaleDateString()
-                      : "-"}
-
-                  </td>
-
-                  {/* DELETE */}
-
-                  <td className="px-6 py-4">
-
-                    <div className="flex justify-end">
-
-                      <button
-                        onClick={() =>
-                          handleDelete(
-                            item.parentId,
-                            item.studentId
-                          )
-                        }
-                        className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-rose-600"
-                        title="Remove relationship"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-
-                    </div>
-
-                  </td>
+                  <th className="text-right text-xs font-semibold text-slate-500 uppercase px-6 py-4">
+                    Actions
+                  </th>
 
                 </tr>
-              ))}
+              </thead>
 
-            </tbody>
-          </table>
+              <tbody className="divide-y divide-slate-50">
+
+                {filteredRelationships.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="hover:bg-slate-50 transition"
+                  >
+
+                    {/* PARENT */}
+
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-slate-900">
+                        {item.parent?.name || "Unknown Parent"}
+                      </div>
+
+                      {item.parent?.email && (
+                        <div className="text-sm text-slate-500">
+                          {item.parent.email}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* STUDENT */}
+
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-slate-900">
+                        {item.student?.name || "Unknown Student"}
+                      </div>
+
+                      {item.student?.class && (
+                        <div className="text-sm text-slate-500">
+                          Class: {item.student.class}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* RELATION */}
+
+                    <td className="px-6 py-4">
+                      <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                        {item.relation || "Guardian"}
+                      </span>
+                    </td>
+
+                    {/* DATE */}
+
+                    <td className="px-6 py-4 text-slate-600">
+                      {item.createdAt
+                        ? new Date(
+                            item.createdAt
+                          ).toLocaleDateString()
+                        : "-"}
+                    </td>
+
+                    {/* DELETE */}
+
+                    <td className="px-6 py-4">
+                      <div className="flex justify-end">
+
+                        <button
+                          onClick={() =>
+                            handleDelete(
+                              item.parentId,
+                              item.studentId
+                            )
+                          }
+                          className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-rose-600"
+                          title="Remove relationship"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                      </div>
+                    </td>
+
+                  </tr>
+                ))}
+
+              </tbody>
+            </table>
+          </div>
         )}
 
       </div>
 
-      {/* ADD RELATIONSHIP MODAL */}
+      {/* ==================================================
+          ADD RELATIONSHIP MODAL
+      ================================================== */}
 
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -576,15 +631,13 @@ export default function ParentStudent() {
             <div className="flex items-center justify-between mb-6">
 
               <div>
-
                 <h2 className="text-xl font-bold text-slate-900">
                   Link Parent with Student
                 </h2>
 
                 <p className="text-sm text-slate-500 mt-1">
-                  Select a parent and student
+                  Enter parent and student names
                 </p>
-
               </div>
 
               <button
@@ -603,87 +656,63 @@ export default function ParentStudent() {
               className="space-y-5"
             >
 
-              {/* PARENT */}
+              {/* ==================================================
+                  PARENT NAME
+              ================================================== */}
 
               <div>
 
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Parent / Guardian
+                  Parent / Guardian Name
                 </label>
 
-                <select
-                  value={form.parentId}
+                <input
+                  type="text"
+                  value={form.parentName}
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      parentId: e.target.value,
+                      parentName: e.target.value,
                     })
                   }
+                  placeholder="Enter parent / guardian name"
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   required
-                >
-
-                  <option value="">
-                    Select Parent
-                  </option>
-
-                  {parents.map((parent) => (
-                    <option
-                      key={parent.id}
-                      value={parent.id}
-                    >
-                      {parent.name}
-                      {parent.email
-                        ? ` - ${parent.email}`
-                        : ""}
-                    </option>
-                  ))}
-
-                </select>
+                  disabled={saving}
+                />
 
               </div>
 
-              {/* STUDENT */}
+              {/* ==================================================
+                  STUDENT NAME
+              ================================================== */}
 
               <div>
 
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Student
+                  Student Name
                 </label>
 
-                <select
-                  value={form.studentId}
+                <input
+                  type="text"
+                  value={form.studentName}
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      studentId: e.target.value,
+                      studentName: e.target.value,
                     })
                   }
+                  placeholder="Enter student name"
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   required
-                >
-
-                  <option value="">
-                    Select Student
-                  </option>
-
-                  {students.map((student) => (
-                    <option
-                      key={student.id}
-                      value={student.id}
-                    >
-                      {student.name}
-                      {student.class
-                        ? ` - ${student.class}`
-                        : ""}
-                    </option>
-                  ))}
-
-                </select>
+                  disabled={saving}
+                />
 
               </div>
 
-              {/* RELATION */}
+              {/* ==================================================
+                  RELATION
+              ================================================== */}
 
               <div>
 
@@ -700,6 +729,7 @@ export default function ParentStudent() {
                     })
                   }
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={saving}
                 >
 
                   <option value="Father">
@@ -730,7 +760,9 @@ export default function ParentStudent() {
 
               </div>
 
-              {/* BUTTONS */}
+              {/* ==================================================
+                  BUTTONS
+              ================================================== */}
 
               <div className="flex gap-3 pt-3">
 
@@ -738,7 +770,7 @@ export default function ParentStudent() {
                   type="button"
                   onClick={() => setShowModal(false)}
                   disabled={saving}
-                  className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl font-medium hover:bg-slate-50"
+                  className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -763,3 +795,4 @@ export default function ParentStudent() {
     </div>
   );
 }
+

@@ -1,3 +1,4 @@
+
 const express = require("express");
 
 const {
@@ -12,13 +13,20 @@ const authorizeRoles = require("../middleware/roleMiddleware");
 const router = express.Router();
 
 // ==================================================
-// ADD STUDENT TO PARENT
-// POST /api/parent-students/:parentId/students
+// ADD / LINK STUDENT TO PARENT
+// POST /api/parent-students
 // ADMIN ONLY
+//
+// Frontend sends:
+// {
+//   parentName: "Ali",
+//   studentName: "Ahmed",
+//   relation: "Father"
+// }
 // ==================================================
 
 router.post(
-  "/:parentId/students",
+  "/",
   authMiddleware,
   authorizeRoles("ADMIN"),
   addStudentToParent
@@ -51,3 +59,4 @@ router.delete(
 );
 
 module.exports = router;
+

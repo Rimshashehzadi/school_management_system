@@ -6,7 +6,6 @@ const prisma = require("../config/prisma");
 
 const getDashboardStats = async (req, res) => {
   try {
-    // Run all counts together for better performance
     const [
       students,
       teachers,

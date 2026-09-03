@@ -1,147 +1,498 @@
-import { useState, useEffect } from 'react';
-import { Calendar, Check, X, Save } from 'lucide-react';
-import { getData, saveData } from  '../../utils/storage'
 
-const classList = ['8-A', '8-B', '9-A', '9-B', '10-A', '10-B'];
+import { useState, useEffect } from "react";
+import {
+  Calendar,
+  Check,
+  X,
+  Clock,
+  Save,
+  RefreshCw,
+} from "lucide-react";
+
+const ATTENDANCE_API = "http://localhost:5000/api/attendance";
+const STUDENTS_API = "http://localhost:5000/api/students";
 
 export default function Attendance() {
-  const [selectedClass, setSelectedClass] = useState('10-A');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({});
-  const [message, setMessage] = useState('');
+  const [attendanceRecords, setAttendanceRecords] = useState({});
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  // ========================================
+  // TOKEN
+  // ========================================
+  const getToken = () => {
+    return localStorage.getItem("token");
+  };
+
+  // ========================================
+  // HEADERS
+  // ========================================
+  const getHeaders = () => {
+    const token = getToken();
+
+    return {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  // ========================================
+  // FETCH STUDENTS
+  // ========================================
+  const fetchStudents = async () => {
+    try {
+      const response = await fetch(STUDENTS_API, {
+        method: "GET",
+        headers: getHeaders(),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message || "Failed to fetch students"
+        );
+      }
+
+      setStudents(result.data || []);
+    } catch (err) {
+      console.error("FETCH STUDENTS ERROR:", err);
+      setError(err.message || "Failed to load students");
+    }
+  };
+
+  // ========================================
+  // FETCH ALL ATTENDANCE
+  // ========================================
+  const fetchAttendance = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(ATTENDANCE_API, {
+        method: "GET",
+        headers: getHeaders(),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message || "Failed to fetch attendance"
+        );
+      }
+
+      const records = result.data || [];
+
+      setAttendanceRecords(
+        records.reduce((acc, record) => {
+          const recordDate = new Date(record.date)
+            .toISOString()
+            .split("T")[0];
+
+          const key = `${record.studentId}_${recordDate}`;
+
+          acc[key] = record;
+
+          return acc;
+        }, {})
+      );
+    } catch (err) {
+      console.error("FETCH ATTENDANCE ERROR:", err);
+      setError(
+        err.message || "Failed to load attendance"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ========================================
+  // INITIAL LOAD
+  // ========================================
   useEffect(() => {
-    const allStudents = getData('students', []);
-    const classStudents = allStudents.filter((s) => s.class === selectedClass && s.status === 'Active');
-    setStudents(classStudents);
+    fetchStudents();
+    fetchAttendance();
+  }, []);
 
-    // Load saved attendance for this class + date
-    const allAttendance = getData('attendance', {});
-    const key = `${selectedClass}_${selectedDate}`;
-    setAttendance(allAttendance[key] || {});
-  }, [selectedClass, selectedDate]);
+  // ========================================
+  // LOAD SELECTED DATE ATTENDANCE
+  // ========================================
+  useEffect(() => {
+    const dateAttendance = {};
 
-  const toggleAttendance = (id) => {
+    students.forEach((student) => {
+      const key = `${student.id}_${selectedDate}`;
+      const record = attendanceRecords[key];
+
+      if (record) {
+        dateAttendance[student.id] = record.status;
+      }
+    });
+
+    setAttendance(dateAttendance);
+  }, [students, attendanceRecords, selectedDate]);
+
+  // ========================================
+  // CHANGE ATTENDANCE
+  // ========================================
+  const setStudentAttendance = (studentId, status) => {
     setAttendance((prev) => ({
       ...prev,
-      [id]: prev[id] === 'present' ? 'absent' : 'present',
+      [studentId]: status,
     }));
   };
 
-  const handleSave = () => {
-    const allAttendance = getData('attendance', {});
-    const key = `${selectedClass}_${selectedDate}`;
-    allAttendance[key] = attendance;
-    saveData('attendance', allAttendance);
+  // ========================================
+  // SAVE ATTENDANCE
+  // ========================================
+  const handleSave = async () => {
+    if (students.length === 0) {
+      alert("No students found.");
+      return;
+    }
 
-    setMessage('Attendance saved successfully!');
-    setTimeout(() => setMessage(''), 2500);
+    try {
+      setSaving(true);
+      setMessage("");
+      setError("");
+
+      for (const student of students) {
+        const status = attendance[student.id] || "PRESENT";
+
+        const key = `${student.id}_${selectedDate}`;
+        const existingRecord = attendanceRecords[key];
+
+        // ========================================
+        // UPDATE EXISTING RECORD
+        // ========================================
+        if (existingRecord) {
+          const response = await fetch(
+            `${ATTENDANCE_API}/${existingRecord.id}`,
+            {
+              method: "PUT",
+              headers: getHeaders(),
+              body: JSON.stringify({
+                date: selectedDate,
+                status,
+              }),
+            }
+          );
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              result.message ||
+                `Failed to update attendance for ${student.name}`
+            );
+          }
+
+          setAttendanceRecords((prev) => ({
+            ...prev,
+            [key]: result.data,
+          }));
+        }
+
+        // ========================================
+        // CREATE NEW RECORD
+        // ========================================
+        else {
+          const response = await fetch(ATTENDANCE_API, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({
+              studentId: student.id,
+              date: selectedDate,
+              status,
+            }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              result.message ||
+                `Failed to create attendance for ${student.name}`
+            );
+          }
+
+          setAttendanceRecords((prev) => ({
+            ...prev,
+            [key]: result.data,
+          }));
+        }
+      }
+
+      setMessage("Attendance saved successfully!");
+
+      setTimeout(() => {
+        setMessage("");
+      }, 2500);
+    } catch (err) {
+      console.error("SAVE ATTENDANCE ERROR:", err);
+
+      setError(
+        err.message || "Failed to save attendance"
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const presentCount = Object.values(attendance).filter((v) => v === 'present').length;
-  const absentCount = students.length - presentCount;
+  // ========================================
+  // REFRESH
+  // ========================================
+  const handleRefresh = async () => {
+    await fetchStudents();
+    await fetchAttendance();
 
+    setMessage("Attendance refreshed.");
+
+    setTimeout(() => {
+      setMessage("");
+    }, 2000);
+  };
+
+  // ========================================
+  // COUNTS
+  // ========================================
+  const presentCount = students.filter(
+    (student) =>
+      (attendance[student.id] || "PRESENT") === "PRESENT"
+  ).length;
+
+  const absentCount = students.filter(
+    (student) =>
+      attendance[student.id] === "ABSENT"
+  ).length;
+
+  const lateCount = students.filter(
+    (student) =>
+      attendance[student.id] === "LATE"
+  ).length;
+
+  // ========================================
+  // RENDER
+  // ========================================
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Attendance</h1>
-        <p className="text-slate-500 mt-1">Mark and save daily student attendance</p>
+
+      {/* ========================================
+          HEADER
+      ======================================== */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            Attendance
+          </h1>
+
+          <p className="text-slate-500 mt-1">
+            Mark and save daily student attendance
+          </p>
+        </div>
+
+        <button
+          onClick={handleRefresh}
+          className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-medium"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Refresh
+        </button>
       </div>
 
-      {/* Filters */}
+      {/* ========================================
+          ERROR
+      ======================================== */}
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl">
+          {error}
+        </div>
+      )}
+
+      {/* ========================================
+          FILTER
+      ======================================== */}
       <div className="flex flex-wrap gap-4 items-center">
+
         <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5">
           <Calendar className="w-4 h-4 text-slate-400" />
+
           <input
             type="date"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(e) =>
+              setSelectedDate(e.target.value)
+            }
             className="text-sm focus:outline-none"
           />
         </div>
 
-        <select
-          value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)}
-          className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          {classList.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-
         {message && (
-          <span className="text-sm text-emerald-600 font-medium">{message}</span>
+          <span className="text-sm text-emerald-600 font-medium">
+            {message}
+          </span>
         )}
       </div>
 
-      {/* Summary */}
-      <div className="flex gap-4 text-sm">
+      {/* ========================================
+          SUMMARY
+      ======================================== */}
+      <div className="flex flex-wrap gap-4 text-sm">
+
         <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl">
           Present: <strong>{presentCount}</strong>
         </div>
+
         <div className="bg-rose-50 text-rose-700 px-4 py-2 rounded-xl">
           Absent: <strong>{absentCount}</strong>
         </div>
-      </div>
 
-      {/* List */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-          <h2 className="font-semibold text-slate-900">Class {selectedClass}</h2>
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-medium"
-          >
-            <Save className="w-4 h-4" />
-            Save Attendance
-          </button>
+        <div className="bg-amber-50 text-amber-700 px-4 py-2 rounded-xl">
+          Late: <strong>{lateCount}</strong>
         </div>
 
-        {students.length === 0 ? (
+      </div>
+
+      {/* ========================================
+          STUDENT LIST
+      ======================================== */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+
+          <div>
+            <h2 className="font-semibold text-slate-900">
+              Student Attendance
+            </h2>
+
+            <p className="text-xs text-slate-400 mt-1">
+              {selectedDate}
+            </p>
+          </div>
+
+          <button
+            onClick={handleSave}
+            disabled={saving || loading || students.length === 0}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-5 py-2 rounded-xl text-sm font-medium"
+          >
+            <Save className="w-4 h-4" />
+
+            {saving ? "Saving..." : "Save Attendance"}
+          </button>
+
+        </div>
+
+        {loading ? (
+          <div className="py-16 text-center text-slate-500">
+            Loading students and attendance...
+          </div>
+        ) : students.length === 0 ? (
           <div className="py-16 text-center text-slate-400">
-            No active students found in this class.
+            No students found.
           </div>
         ) : (
           <div className="divide-y divide-slate-50">
+
             {students.map((student) => {
-              const status = attendance[student.id] || 'present';
+              const status =
+                attendance[student.id] || "PRESENT";
+
               return (
-                <div key={student.id} className="flex items-center justify-between px-6 py-4 hover:bg-slate-50">
+                <div
+                  key={student.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 hover:bg-slate-50"
+                >
+
+                  {/* Student */}
                   <div>
-                    <p className="font-medium text-slate-900">{student.name}</p>
-                    <p className="text-sm text-slate-500">Roll: {student.roll}</p>
+                    <p className="font-medium text-slate-900">
+                      {student.name}
+                    </p>
+
+                    <p className="text-sm text-slate-500">
+                      Student ID: {student.id}
+                    </p>
                   </div>
 
-                  <div className="flex gap-2">
+                  {/* Attendance Buttons */}
+                  <div className="flex flex-wrap gap-2">
+
+                    {/* PRESENT */}
                     <button
-                      onClick={() => toggleAttendance(student.id)}
+                      onClick={() =>
+                        setStudentAttendance(
+                          student.id,
+                          "PRESENT"
+                        )
+                      }
                       className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition ${
-                        status === 'present'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-slate-100 text-slate-500'
+                        status === "PRESENT"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-700"
                       }`}
                     >
-                      <Check className="w-4 h-4" /> Present
+                      <Check className="w-4 h-4" />
+                      Present
                     </button>
+
+                    {/* ABSENT */}
                     <button
-                      onClick={() => toggleAttendance(student.id)}
+                      onClick={() =>
+                        setStudentAttendance(
+                          student.id,
+                          "ABSENT"
+                        )
+                      }
                       className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition ${
-                        status === 'absent'
-                          ? 'bg-rose-50 text-rose-700'
-                          : 'bg-slate-100 text-slate-500'
+                        status === "ABSENT"
+                          ? "bg-rose-50 text-rose-700"
+                          : "bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-700"
                       }`}
                     >
-                      <X className="w-4 h-4" /> Absent
+                      <X className="w-4 h-4" />
+                      Absent
                     </button>
+
+                    {/* LATE */}
+                    <button
+                      onClick={() =>
+                        setStudentAttendance(
+                          student.id,
+                          "LATE"
+                        )
+                      }
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition ${
+                        status === "LATE"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-slate-100 text-slate-500 hover:bg-amber-50 hover:text-amber-700"
+                      }`}
+                    >
+                      <Clock className="w-4 h-4" />
+                      Late
+                    </button>
+
                   </div>
+
                 </div>
               );
             })}
+
           </div>
         )}
+
       </div>
+
     </div>
   );
 }
+

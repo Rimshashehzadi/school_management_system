@@ -9,7 +9,8 @@ const examRoutes = require("./routes/examRoutes");
 const examSubjectRoutes = require("./routes/examSubjectRoutes");
 const marksRoutes = require("./routes/marksRoutes");
 const resultRoutes = require("./routes/resultRoutes");
-
+const subjectRoutes = require("./routes/subjectRoutes");
+const studentRoutes = require("./routes/studentRoutes");
 // DAY 4 ROUTES
 const teacherRoutes = require("./routes/teacherRoutes");
 const classRoutes = require("./routes/classRoutes");
@@ -414,6 +415,9 @@ app.use("/api/marks", marksRoutes);
 // ==================================================
 // RESULT API
 // ==================================================
+app.use("/api/students", studentRoutes);
+
+app.use("/api/subjects", subjectRoutes);
 
 app.use("/api/results", resultRoutes);
 

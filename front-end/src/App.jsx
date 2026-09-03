@@ -14,6 +14,13 @@ import Reports from './pages/reports/Reports';
 import Settings from './pages/settings/Settings';
 import Accounting from './pages/accounting/Accounting';
 import Backup from './pages/backup/Backup'
+import ExamSubjects from './pages/exams/ExamSubjects';
+import Marks from './pages/marks/Marks';
+import Results from './pages/results/Results';
+import Timetable from './pages/timetable/TimeTable';
+import Parents from './pages/parents/Parents';
+import ParentStudent from './pages/parents/ParentStudent';
+import Notices from './pages/notices/Notices';
 
 function App() {
   return (
@@ -34,6 +41,15 @@ function App() {
           <Route path="/exams" element={<Exams/>} />
           <Route path="/staff" element={<Staff/>} />
           <Route path="/reports" element={<Reports/>} />
+        <Route path="/exam-subjects" element={<ExamSubjects />} />
+       <Route path="/marks" element={<Marks/>} />
+        <Route path="/results" element={<Results/>} />
+        <Route path="/timetable" element={<Timetable/>} />
+          <Route path="/parents" element={<Parents/>} />
+          <Route path="/parent-students" element={<ParentStudent/>} />
+           <Route path="/notices" element={<Notices/>} />
+
+
           <Route path="/settings" element={<Settings />} />
           <Route path="/accounting" element={<Accounting />} />
           <Route path="/backup" element={<Backup />} />

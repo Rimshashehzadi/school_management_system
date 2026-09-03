@@ -1,29 +1,42 @@
 const prisma = require("../config/prisma");
 
-// ==========================================
-// CREATE TIMETABLE
-// ==========================================
+// =====================================================
+// HELPER FUNCTIONS
+// =====================================================
 
+// Normalize text for comparison
+const normalizeText = (value) => {
+  return String(value || "").trim().toLowerCase();
+};
+
+// Check whether two time ranges overlap
+const isTimeOverlap = (start1, end1, start2, end2) => {
+  return start1 < end2 && end1 > start2;
+};
+
+// =====================================================
+// CREATE TIMETABLE
+// POST /api/timetables
+// =====================================================
 const createTimetable = async (req, res) => {
   try {
     const {
-      classId,
-      subjectId,
-      teacherId,
+      className,
+      subjectName,
+      teacherName,
       day,
       startTime,
       endTime,
       room,
     } = req.body;
 
-    // ==========================================
-    // VALIDATION
-    // ==========================================
-
+    // -----------------------------
+    // Validation
+    // -----------------------------
     if (
-      classId === undefined ||
-      subjectId === undefined ||
-      teacherId === undefined ||
+      !className ||
+      !subjectName ||
+      !teacherName ||
       !day ||
       !startTime ||
       !endTime
@@ -31,168 +44,98 @@ const createTimetable = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "classId, subjectId, teacherId, day, startTime and endTime are required",
+          "className, subjectName, teacherName, day, startTime and endTime are required",
       });
     }
 
-    const classIdNumber = Number(classId);
-    const subjectIdNumber = Number(subjectId);
-    const teacherIdNumber = Number(teacherId);
+    // Clean input
+    const cleanClassName = String(className).trim();
+    const cleanSubjectName = String(subjectName).trim();
+    const cleanTeacherName = String(teacherName).trim();
+    const cleanDay = String(day).trim();
+    const cleanStartTime = String(startTime).trim();
+    const cleanEndTime = String(endTime).trim();
+    const cleanRoom = room ? String(room).trim() : null;
 
-    if (
-      !Number.isInteger(classIdNumber) ||
-      !Number.isInteger(subjectIdNumber) ||
-      !Number.isInteger(teacherIdNumber)
-    ) {
+    // -----------------------------
+    // Validate time
+    // -----------------------------
+    if (cleanStartTime >= cleanEndTime) {
       return res.status(400).json({
         success: false,
-        message: "classId, subjectId and teacherId must be valid integers",
+        message: "Start time must be earlier than end time",
       });
     }
 
-    // ==========================================
-    // CHECK CLASS
-    // ==========================================
-
-    const existingClass = await prisma.class.findUnique({
+    // -----------------------------
+    // Get existing timetable
+    // for same day
+    // -----------------------------
+    const existingTimetables = await prisma.timetable.findMany({
       where: {
-        id: classIdNumber,
+        day: cleanDay,
       },
     });
 
-    if (!existingClass) {
-      return res.status(404).json({
-        success: false,
-        message: "Class not found",
-      });
-    }
+    const normalizedClass = normalizeText(cleanClassName);
+    const normalizedTeacher = normalizeText(cleanTeacherName);
 
-    // ==========================================
-    // CHECK SUBJECT
-    // ==========================================
-
-    const subject = await prisma.subject.findUnique({
-      where: {
-        id: subjectIdNumber,
-      },
-    });
-
-    if (!subject) {
-      return res.status(404).json({
-        success: false,
-        message: "Subject not found",
-      });
-    }
-
-    // ==========================================
-    // CHECK TEACHER
-    // ==========================================
-
-    const teacher = await prisma.teacher.findUnique({
-      where: {
-        id: teacherIdNumber,
-      },
-    });
-
-    if (!teacher) {
-      return res.status(404).json({
-        success: false,
-        message: "Teacher not found",
-      });
-    }
-
-    // ==========================================
-    // VALIDATE TIME
-    // ==========================================
-
-    if (startTime >= endTime) {
-      return res.status(400).json({
-        success: false,
-        message: "startTime must be before endTime",
-      });
-    }
-
-    // ==========================================
-    // CHECK CLASS TIME CONFLICT
-    // ==========================================
-
-    const classConflict = await prisma.timetable.findFirst({
-      where: {
-        classId: classIdNumber,
-        day: day,
-
-        AND: [
-          {
-            startTime: {
-              lt: endTime,
-            },
-          },
-          {
-            endTime: {
-              gt: startTime,
-            },
-          },
-        ],
-      },
+    // -----------------------------
+    // Class conflict
+    // -----------------------------
+    const classConflict = existingTimetables.find((item) => {
+      return (
+        normalizeText(item.className) === normalizedClass &&
+        isTimeOverlap(
+          cleanStartTime,
+          cleanEndTime,
+          item.startTime,
+          item.endTime
+        )
+      );
     });
 
     if (classConflict) {
       return res.status(409).json({
         success: false,
-        message: "Class already has a timetable entry at this time",
+        message: `Class "${cleanClassName}" already has a timetable from ${classConflict.startTime} to ${classConflict.endTime} on ${cleanDay}`,
       });
     }
 
-    // ==========================================
-    // CHECK TEACHER TIME CONFLICT
-    // ==========================================
-
-    const teacherConflict = await prisma.timetable.findFirst({
-      where: {
-        teacherId: teacherIdNumber,
-        day: day,
-
-        AND: [
-          {
-            startTime: {
-              lt: endTime,
-            },
-          },
-          {
-            endTime: {
-              gt: startTime,
-            },
-          },
-        ],
-      },
+    // -----------------------------
+    // Teacher conflict
+    // -----------------------------
+    const teacherConflict = existingTimetables.find((item) => {
+      return (
+        normalizeText(item.teacherName) === normalizedTeacher &&
+        isTimeOverlap(
+          cleanStartTime,
+          cleanEndTime,
+          item.startTime,
+          item.endTime
+        )
+      );
     });
 
     if (teacherConflict) {
       return res.status(409).json({
         success: false,
-        message: "Teacher already has a timetable entry at this time",
+        message: `Teacher "${cleanTeacherName}" already has a timetable from ${teacherConflict.startTime} to ${teacherConflict.endTime} on ${cleanDay}`,
       });
     }
 
-    // ==========================================
-    // CREATE TIMETABLE
-    // ==========================================
-
+    // -----------------------------
+    // Create timetable
+    // -----------------------------
     const timetable = await prisma.timetable.create({
       data: {
-        classId: classIdNumber,
-        subjectId: subjectIdNumber,
-        teacherId: teacherIdNumber,
-        day: day.trim(),
-        startTime: startTime.trim(),
-        endTime: endTime.trim(),
-        room: room ? room.trim() : null,
-      },
-
-      include: {
-        class: true,
-        subject: true,
-        teacher: true,
+        className: cleanClassName,
+        subjectName: cleanSubjectName,
+        teacherName: cleanTeacherName,
+        day: cleanDay,
+        startTime: cleanStartTime,
+        endTime: cleanEndTime,
+        room: cleanRoom,
       },
     });
 
@@ -202,7 +145,7 @@ const createTimetable = async (req, res) => {
       data: timetable,
     });
   } catch (error) {
-    console.error("Create Timetable Error:", error);
+    console.error("CREATE TIMETABLE ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -212,10 +155,10 @@ const createTimetable = async (req, res) => {
   }
 };
 
-// ==========================================
+// =====================================================
 // GET ALL TIMETABLES
-// ==========================================
-
+// GET /api/timetables
+// =====================================================
 const getTimetables = async (req, res) => {
   try {
     const timetables = await prisma.timetable.findMany({
@@ -227,12 +170,6 @@ const getTimetables = async (req, res) => {
           startTime: "asc",
         },
       ],
-
-      include: {
-        class: true,
-        subject: true,
-        teacher: true,
-      },
     });
 
     return res.status(200).json({
@@ -241,20 +178,20 @@ const getTimetables = async (req, res) => {
       data: timetables,
     });
   } catch (error) {
-    console.error("Get Timetables Error:", error);
+    console.error("GET TIMETABLES ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to get timetables",
+      message: "Failed to fetch timetables",
       error: error.message,
     });
   }
 };
 
-// ==========================================
+// =====================================================
 // GET TIMETABLE BY ID
-// ==========================================
-
+// GET /api/timetables/:id
+// =====================================================
 const getTimetableById = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -270,12 +207,6 @@ const getTimetableById = async (req, res) => {
       where: {
         id,
       },
-
-      include: {
-        class: true,
-        subject: true,
-        teacher: true,
-      },
     });
 
     if (!timetable) {
@@ -290,152 +221,102 @@ const getTimetableById = async (req, res) => {
       data: timetable,
     });
   } catch (error) {
-    console.error("Get Timetable By ID Error:", error);
+    console.error("GET TIMETABLE BY ID ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to get timetable",
+      message: "Failed to fetch timetable",
       error: error.message,
     });
   }
 };
 
-// ==========================================
-// GET TIMETABLE BY CLASS
-// ==========================================
-
+// =====================================================
+// GET TIMETABLE BY CLASS NAME
+// GET /api/timetables/class/:className
+// =====================================================
 const getTimetableByClass = async (req, res) => {
   try {
-    const classId = Number(req.params.classId);
+    const className = decodeURIComponent(req.params.className).trim();
 
-    if (!Number.isInteger(classId)) {
+    if (!className) {
       return res.status(400).json({
         success: false,
-        message: "Invalid classId",
-      });
-    }
-
-    const existingClass = await prisma.class.findUnique({
-      where: {
-        id: classId,
-      },
-    });
-
-    if (!existingClass) {
-      return res.status(404).json({
-        success: false,
-        message: "Class not found",
+        message: "Class name is required",
       });
     }
 
     const timetables = await prisma.timetable.findMany({
       where: {
-        classId,
+        className: className,
       },
-
-      orderBy: [
-        {
-          day: "asc",
-        },
-        {
-          startTime: "asc",
-        },
-      ],
-
-      include: {
-        class: true,
-        subject: true,
-        teacher: true,
+      orderBy: {
+        startTime: "asc",
       },
     });
 
     return res.status(200).json({
       success: true,
-      class: existingClass,
       count: timetables.length,
       data: timetables,
     });
   } catch (error) {
-    console.error("Get Class Timetable Error:", error);
+    console.error("GET CLASS TIMETABLE ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to get class timetable",
+      message: "Failed to fetch class timetable",
       error: error.message,
     });
   }
 };
 
-// ==========================================
-// GET TIMETABLE BY TEACHER
-// ==========================================
-
+// =====================================================
+// GET TIMETABLE BY TEACHER NAME
+// GET /api/timetables/teacher/:teacherName
+// =====================================================
 const getTimetableByTeacher = async (req, res) => {
   try {
-    const teacherId = Number(req.params.teacherId);
+    const teacherName = decodeURIComponent(
+      req.params.teacherName
+    ).trim();
 
-    if (!Number.isInteger(teacherId)) {
+    if (!teacherName) {
       return res.status(400).json({
         success: false,
-        message: "Invalid teacherId",
-      });
-    }
-
-    const teacher = await prisma.teacher.findUnique({
-      where: {
-        id: teacherId,
-      },
-    });
-
-    if (!teacher) {
-      return res.status(404).json({
-        success: false,
-        message: "Teacher not found",
+        message: "Teacher name is required",
       });
     }
 
     const timetables = await prisma.timetable.findMany({
       where: {
-        teacherId,
+        teacherName: teacherName,
       },
-
-      orderBy: [
-        {
-          day: "asc",
-        },
-        {
-          startTime: "asc",
-        },
-      ],
-
-      include: {
-        class: true,
-        subject: true,
-        teacher: true,
+      orderBy: {
+        startTime: "asc",
       },
     });
 
     return res.status(200).json({
       success: true,
-      teacher,
       count: timetables.length,
       data: timetables,
     });
   } catch (error) {
-    console.error("Get Teacher Timetable Error:", error);
+    console.error("GET TEACHER TIMETABLE ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to get teacher timetable",
+      message: "Failed to fetch teacher timetable",
       error: error.message,
     });
   }
 };
 
-// ==========================================
+// =====================================================
 // UPDATE TIMETABLE
-// ==========================================
-
+// PUT /api/timetables/:id
+// =====================================================
 const updateTimetable = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -447,6 +328,9 @@ const updateTimetable = async (req, res) => {
       });
     }
 
+    // -----------------------------
+    // Check timetable exists
+    // -----------------------------
     const existingTimetable = await prisma.timetable.findUnique({
       where: {
         id,
@@ -461,218 +345,157 @@ const updateTimetable = async (req, res) => {
     }
 
     const {
-      classId,
-      subjectId,
-      teacherId,
+      className,
+      subjectName,
+      teacherName,
       day,
       startTime,
       endTime,
       room,
     } = req.body;
 
-    const finalClassId =
-      classId !== undefined ? Number(classId) : existingTimetable.classId;
+    // -----------------------------
+    // Use old values if not provided
+    // -----------------------------
+    const cleanClassName =
+      className !== undefined
+        ? String(className).trim()
+        : existingTimetable.className;
 
-    const finalSubjectId =
-      subjectId !== undefined
-        ? Number(subjectId)
-        : existingTimetable.subjectId;
+    const cleanSubjectName =
+      subjectName !== undefined
+        ? String(subjectName).trim()
+        : existingTimetable.subjectName;
 
-    const finalTeacherId =
-      teacherId !== undefined
-        ? Number(teacherId)
-        : existingTimetable.teacherId;
+    const cleanTeacherName =
+      teacherName !== undefined
+        ? String(teacherName).trim()
+        : existingTimetable.teacherName;
 
-    const finalDay =
-      day !== undefined ? day.trim() : existingTimetable.day;
+    const cleanDay =
+      day !== undefined
+        ? String(day).trim()
+        : existingTimetable.day;
 
-    const finalStartTime =
+    const cleanStartTime =
       startTime !== undefined
-        ? startTime.trim()
+        ? String(startTime).trim()
         : existingTimetable.startTime;
 
-    const finalEndTime =
+    const cleanEndTime =
       endTime !== undefined
-        ? endTime.trim()
+        ? String(endTime).trim()
         : existingTimetable.endTime;
 
-    const finalRoom =
+    const cleanRoom =
       room !== undefined
         ? room
-          ? room.trim()
+          ? String(room).trim()
           : null
         : existingTimetable.room;
 
-    // ==========================================
-    // VALIDATE IDs
-    // ==========================================
-
+    // -----------------------------
+    // Required fields
+    // -----------------------------
     if (
-      !Number.isInteger(finalClassId) ||
-      !Number.isInteger(finalSubjectId) ||
-      !Number.isInteger(finalTeacherId)
+      !cleanClassName ||
+      !cleanSubjectName ||
+      !cleanTeacherName ||
+      !cleanDay ||
+      !cleanStartTime ||
+      !cleanEndTime
     ) {
       return res.status(400).json({
         success: false,
-        message: "classId, subjectId and teacherId must be valid integers",
+        message:
+          "className, subjectName, teacherName, day, startTime and endTime are required",
       });
     }
 
-    // ==========================================
-    // CHECK CLASS
-    // ==========================================
-
-    const existingClass = await prisma.class.findUnique({
-      where: {
-        id: finalClassId,
-      },
-    });
-
-    if (!existingClass) {
-      return res.status(404).json({
-        success: false,
-        message: "Class not found",
-      });
-    }
-
-    // ==========================================
-    // CHECK SUBJECT
-    // ==========================================
-
-    const subject = await prisma.subject.findUnique({
-      where: {
-        id: finalSubjectId,
-      },
-    });
-
-    if (!subject) {
-      return res.status(404).json({
-        success: false,
-        message: "Subject not found",
-      });
-    }
-
-    // ==========================================
-    // CHECK TEACHER
-    // ==========================================
-
-    const teacher = await prisma.teacher.findUnique({
-      where: {
-        id: finalTeacherId,
-      },
-    });
-
-    if (!teacher) {
-      return res.status(404).json({
-        success: false,
-        message: "Teacher not found",
-      });
-    }
-
-    // ==========================================
-    // VALIDATE TIME
-    // ==========================================
-
-    if (finalStartTime >= finalEndTime) {
+    // -----------------------------
+    // Validate time
+    // -----------------------------
+    if (cleanStartTime >= cleanEndTime) {
       return res.status(400).json({
         success: false,
-        message: "startTime must be before endTime",
+        message: "Start time must be earlier than end time",
       });
     }
 
-    // ==========================================
-    // CHECK CLASS CONFLICT
-    // ==========================================
-
-    const classConflict = await prisma.timetable.findFirst({
+    // -----------------------------
+    // Get other timetables
+    // -----------------------------
+    const otherTimetables = await prisma.timetable.findMany({
       where: {
-        classId: finalClassId,
-        day: finalDay,
-
-        AND: [
-          {
-            startTime: {
-              lt: finalEndTime,
-            },
-          },
-          {
-            endTime: {
-              gt: finalStartTime,
-            },
-          },
-        ],
-
+        day: cleanDay,
         NOT: {
           id,
         },
       },
+    });
+
+    const normalizedClass = normalizeText(cleanClassName);
+    const normalizedTeacher = normalizeText(cleanTeacherName);
+
+    // -----------------------------
+    // Class conflict
+    // -----------------------------
+    const classConflict = otherTimetables.find((item) => {
+      return (
+        normalizeText(item.className) === normalizedClass &&
+        isTimeOverlap(
+          cleanStartTime,
+          cleanEndTime,
+          item.startTime,
+          item.endTime
+        )
+      );
     });
 
     if (classConflict) {
       return res.status(409).json({
         success: false,
-        message: "Class already has a timetable entry at this time",
+        message: `Class "${cleanClassName}" already has a timetable from ${classConflict.startTime} to ${classConflict.endTime} on ${cleanDay}`,
       });
     }
 
-    // ==========================================
-    // CHECK TEACHER CONFLICT
-    // ==========================================
-
-    const teacherConflict = await prisma.timetable.findFirst({
-      where: {
-        teacherId: finalTeacherId,
-        day: finalDay,
-
-        AND: [
-          {
-            startTime: {
-              lt: finalEndTime,
-            },
-          },
-          {
-            endTime: {
-              gt: finalStartTime,
-            },
-          },
-        ],
-
-        NOT: {
-          id,
-        },
-      },
+    // -----------------------------
+    // Teacher conflict
+    // -----------------------------
+    const teacherConflict = otherTimetables.find((item) => {
+      return (
+        normalizeText(item.teacherName) === normalizedTeacher &&
+        isTimeOverlap(
+          cleanStartTime,
+          cleanEndTime,
+          item.startTime,
+          item.endTime
+        )
+      );
     });
 
     if (teacherConflict) {
       return res.status(409).json({
         success: false,
-        message: "Teacher already has a timetable entry at this time",
+        message: `Teacher "${cleanTeacherName}" already has a timetable from ${teacherConflict.startTime} to ${teacherConflict.endTime} on ${cleanDay}`,
       });
     }
 
-    // ==========================================
-    // UPDATE
-    // ==========================================
-
+    // -----------------------------
+    // Update timetable
+    // -----------------------------
     const updatedTimetable = await prisma.timetable.update({
       where: {
         id,
       },
-
       data: {
-        classId: finalClassId,
-        subjectId: finalSubjectId,
-        teacherId: finalTeacherId,
-        day: finalDay,
-        startTime: finalStartTime,
-        endTime: finalEndTime,
-        room: finalRoom,
-      },
-
-      include: {
-        class: true,
-        subject: true,
-        teacher: true,
+        className: cleanClassName,
+        subjectName: cleanSubjectName,
+        teacherName: cleanTeacherName,
+        day: cleanDay,
+        startTime: cleanStartTime,
+        endTime: cleanEndTime,
+        room: cleanRoom,
       },
     });
 
@@ -682,7 +505,7 @@ const updateTimetable = async (req, res) => {
       data: updatedTimetable,
     });
   } catch (error) {
-    console.error("Update Timetable Error:", error);
+    console.error("UPDATE TIMETABLE ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -692,10 +515,10 @@ const updateTimetable = async (req, res) => {
   }
 };
 
-// ==========================================
+// =====================================================
 // DELETE TIMETABLE
-// ==========================================
-
+// DELETE /api/timetables/:id
+// =====================================================
 const deleteTimetable = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -731,7 +554,7 @@ const deleteTimetable = async (req, res) => {
       message: "Timetable deleted successfully",
     });
   } catch (error) {
-    console.error("Delete Timetable Error:", error);
+    console.error("DELETE TIMETABLE ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -741,10 +564,9 @@ const deleteTimetable = async (req, res) => {
   }
 };
 
-// ==========================================
-// EXPORT
-// ==========================================
-
+// =====================================================
+// EXPORTS
+// =====================================================
 module.exports = {
   createTimetable,
   getTimetables,

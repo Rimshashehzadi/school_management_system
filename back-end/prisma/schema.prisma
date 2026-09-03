@@ -35,7 +35,6 @@ model Subject {
   updatedAt DateTime @updatedAt
 
   examSubjects ExamSubject[]
-  timetables   Timetable[]
 
   @@map("subjects")
 }
@@ -108,8 +107,6 @@ model Teacher {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  timetables Timetable[]
-
   @@map("teachers")
 }
 
@@ -123,20 +120,23 @@ model Class {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  timetables Timetable[]
-
   @@map("classes")
 }
 
 // ===============================
 // TIMETABLE
 // ===============================
+// Class, Subject and Teacher are stored
+// directly as names so the user can enter
+// any value from the frontend without needing
+// existing Class/Subject/Teacher records.
+// ===============================
 model Timetable {
   id Int @id @default(autoincrement())
 
-  classId   Int
-  subjectId Int
-  teacherId Int
+  className   String
+  subjectName String
+  teacherName String
 
   day       String
   startTime String
@@ -146,16 +146,12 @@ model Timetable {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
-  @@index([classId])
-  @@index([subjectId])
-  @@index([teacherId])
+  @@index([className])
+  @@index([subjectName])
+  @@index([teacherName])
   @@index([day])
-  @@index([classId, day])
-  @@index([teacherId, day])
+  @@index([className, day])
+  @@index([teacherName, day])
   @@map("timetables")
 }
 
@@ -257,9 +253,6 @@ model Fee {
   paidAmount Decimal   @db.Decimal(10, 2)
   dueDate    DateTime  @db.Date
   status     FeeStatus
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 

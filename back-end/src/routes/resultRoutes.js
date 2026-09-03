@@ -11,6 +11,8 @@ const router = express.Router();
 // ==========================================
 // GET RESULT FOR STUDENT + EXAM
 // ==========================================
+// Example:
+// GET /api/results/student/1/exam/2
 
 router.get(
   "/student/:studentId/exam/:examId",
@@ -20,6 +22,8 @@ router.get(
 // ==========================================
 // GET RESULT HISTORY FOR STUDENT
 // ==========================================
+// Example:
+// GET /api/results/student/1/history
 
 router.get(
   "/student/:studentId/history",
@@ -29,10 +33,16 @@ router.get(
 // ==========================================
 // GET REPORT CARD
 // ==========================================
+// Example:
+// GET /api/results/student/1/exam/2/report-card
 
 router.get(
   "/student/:studentId/exam/:examId/report-card",
   getReportCard
 );
+
+// ==========================================
+// EXPORT ROUTER
+// ==========================================
 
 module.exports = router;
